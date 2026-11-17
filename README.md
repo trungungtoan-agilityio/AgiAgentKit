@@ -76,6 +76,9 @@ flowchart LR
 Hook thresholds, metrics and every CLI command are in [docs/reference.md](docs/reference.md). The design is in
 [docs/architecture.md](docs/architecture.md).
 
+Slides from the Agility IO talk: [PDF](docs/talk/Session-Superadvisor-AgilityIO.pdf) ·
+[PowerPoint](docs/talk/Session-Superadvisor-AgilityIO.pptx).
+
 ## Try the demo
 
 `demo-app/` is a small "library loans" service with a six-card backlog, from small fixes to one hard bug. These

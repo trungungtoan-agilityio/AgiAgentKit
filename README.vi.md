@@ -62,6 +62,9 @@ Mở session leader (`tmux -L sa attach -t YOUR-PROJECT-LEAD`, hoặc Remote Con
 Ngưỡng hook, số đo và mọi lệnh CLI: [docs/reference.md](docs/reference.md). Thiết kế:
 [docs/architecture.md](docs/architecture.md).
 
+Slide buổi trình bày tại Agility IO: [PDF](docs/talk/Session-Superadvisor-AgilityIO.pdf) ·
+[PowerPoint](docs/talk/Session-Superadvisor-AgilityIO.pptx).
+
 ## Chạy demo
 
 `demo-app/` là một service "mượn sách thư viện" nhỏ với backlog 6 thẻ, từ sửa nhỏ tới một bug khó. Các lệnh dưới giả
