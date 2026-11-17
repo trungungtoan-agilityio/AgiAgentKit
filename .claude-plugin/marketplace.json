@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-marketplace.json",
+  "name": "agi-agent-kit",
+  "description": "Minimal Claude Code plugin: agents split by model tier, token-saving hooks, and telemetry of the main session and subagents.",
+  "owner": {
+    "name": "U2T"
+  },
+  "plugins": [
+    {
+      "name": "agi-agent-kit",
+      "source": "./plugin",
+      "description": "Five tiered agents (haiku/sonnet/opus), guard hooks that save tokens, and a cost/fit scorecard."
+    }
+  ]
+}

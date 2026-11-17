@@ -1,0 +1,8 @@
+{
+  "status": "active",
+  "integration_branch": "main",
+  "patrol": {
+    "waiting_min": 5,
+    "stuck_min": 20
+  }
+}

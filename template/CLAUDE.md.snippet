@@ -1,0 +1,17 @@
+<!-- superadvisor:begin -->
+## Dự án (điền các chỗ <...>)
+
+- Tên / mục đích: <tên dự án> - <một câu mô tả>
+- Nhánh tích hợp: <main|dev> (khớp `brains/config.json`)
+- Chạy dev: `<lệnh>` · Test nhanh (file đang sửa): `<lệnh test mục tiêu>` · Test đầy đủ: `<lệnh>`
+- Typecheck / lint: `<lệnh>`
+- Vùng nhạy cảm (cần review kỹ): <auth, thanh toán, migration, quyền...>
+- Không được động vào: <file bí mật, .env*, migration đã chạy...>
+
+## Quy tắc làm việc
+
+- Quy trình và cỡ việc: `.claude/rules/workflow.md`
+- Ngân sách token: `.claude/rules/token-budget.md`
+- Mô hình leader/lane (Session Superadvisor): leader điều phối, mỗi lane = một thẻ = một worktree = một PR.
+  Owner chỉ duyệt merge, production và quyền. Quyền của leader: `brains/lead.md`.
+<!-- superadvisor:end -->

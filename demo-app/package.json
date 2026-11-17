@@ -1,0 +1,18 @@
+{
+  "name": "library-loans-demo",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Demo app nho (Library loans) dung cho talk va benchmark cua AgiAgentKit",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "7.0.2",
+    "vitest": "3.2.7"
+  }
+}

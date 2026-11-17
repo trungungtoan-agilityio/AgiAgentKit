@@ -1,0 +1,406 @@
+#!/usr/bin/env bash
+# superadvisor - one leader Claude Code session coordinates several lane sessions.
+# Lane = one card = one worktree = one PR. Everything runs in tmux on socket "sa".
+# Needs: bash 3.2+, tmux, git, jq. CLAUDE_BIN / TMUX_BIN can be overridden (tests fake them).
+set -euo pipefail
+
+CLAUDE_BIN="${CLAUDE_BIN:-claude}"
+TMUX_BIN="${TMUX_BIN:-tmux}"
+SOCK="${SA_SOCKET:-sa}"
+
+# Resolve the real script location (one level of symlink) so we can find ../template and ../plugin.
+_src="$0"
+if [ -L "$_src" ]; then
+  _src="$(readlink "$_src")"
+  case "$_src" in /*) ;; *) _src="$(dirname "$0")/$_src" ;; esac
+fi
+SA_DIR="$(cd "$(dirname "$_src")" && pwd)"
+SA_BIN="$SA_DIR/$(basename "$_src")"
+SA_HOME="$(cd "$SA_DIR/.." && pwd)"
+TEMPLATE_DIR="${SA_TEMPLATE_DIR:-$SA_HOME/template}"
+
+ROOT=""; PROJ=""; BRAINS=""; LOCAL=""; CMD=()
+
+die() { printf 'LỖI: %s\n' "$*" >&2; exit 1; }
+say() { printf '%s\n' "$*"; }
+tm() { "$TMUX_BIN" -L "$SOCK" "$@"; }
+need_val() { [ "$1" -ge 2 ] || die "Thiếu giá trị cho tham số $2"; }
+
+usage() {
+  cat <<'EOF'
+superadvisor - một session leader điều phối nhiều session lane (tmux socket "sa").
+
+Dùng:
+  superadvisor init <project>                  Chép template (rules, brains/, CLAUDE.md) vào project, không ghi đè.
+  superadvisor up [<project>] [--dry-run]      Mở leader <PROJ>-LEAD trong tmux (Remote Control + auto mode).
+  superadvisor lane open <tên> --brief <file> [--model <id>] [--worktree <path>] [--dry-run]
+                                               Mở một lane: worktree + nhánh lane/<tên> + session tmux.
+  superadvisor lane close <tên> [--rm-worktree]  Tắt lane; chỉ xoá worktree khi nhánh đã merge.
+  superadvisor status                          Mỗi session một dòng: BUSY/IDLE/WAITING/DEAD + phút không đổi.
+  superadvisor patrol                          status + ghi patrol.log + in "KẸT: ..." cho lane bị kẹt.
+  superadvisor report                          Báo cáo ngắn trong ngày (lane, cờ kẹt, commit, chi phí).
+  superadvisor cron                            In (không cài) mẫu crontab/launchd cho patrol và report.
+
+Môi trường: CLAUDE_BIN, TMUX_BIN, SA_SOCKET (mặc định sa), SA_PROJECT (thư mục project).
+EOF
+}
+
+slug_upper() { printf '%s' "$1" | tr 'a-z' 'A-Z' | tr -c 'A-Z0-9' '-'; }
+
+# resolve_root [dir]: explicit dir, else $SA_PROJECT, else the git toplevel of cwd.
+resolve_root() {
+  local d="${1:-}"
+  [ -n "$d" ] || d="${SA_PROJECT:-}"
+  if [ -z "$d" ]; then
+    d="$(git rev-parse --show-toplevel 2>/dev/null)" || die "Không xác định được project (chạy trong repo git hoặc đặt SA_PROJECT)."
+  fi
+  [ -d "$d" ] || die "Không thấy thư mục project: $d"
+  (cd "$d" && pwd -P)
+}
+
+setup_project() {
+  ROOT="$(resolve_root "${1:-}")"
+  PROJ="$(slug_upper "$(basename "$ROOT")")"
+  BRAINS="$ROOT/brains"
+  LOCAL="$BRAINS/.local"
+}
+
+# cfg <jq-path> <default>: read a value from brains/config.json.
+cfg() {
+  local f="$BRAINS/config.json" v=""
+  if [ -f "$f" ]; then v="$(jq -r "$1 // empty" "$f" 2>/dev/null)" || v=""; fi
+  if [ -n "$v" ]; then printf '%s' "$v"; else printf '%s' "$2"; fi
+}
+
+has_session() { tm has-session -t "=$1" >/dev/null 2>&1; }
+
+# build_cmd <session> <cwd> <prompt> <model> <brief>: fill CMD with the tmux new-session argv.
+# A non-empty <brief> makes it a lane (KIT_LANE env + compaction window); otherwise it is the leader.
+build_cmd() {
+  local sess="$1" cwd="$2" prompt="$3" model="$4" brief="$5"
+  CMD=("$TMUX_BIN" -u -L "$SOCK" new-session -d -s "$sess" -x 200 -y 50 -c "$cwd"
+       env -u CLAUDECODE -u CLAUDE_CODE_ENTRYPOINT)
+  if [ -n "$brief" ]; then
+    CMD+=(KIT_LANE=1 "KIT_LANE_NAME=$sess" "KIT_LANE_BRIEF=$brief" CLAUDE_CODE_AUTO_COMPACT_WINDOW=200000)
+  else
+    CMD+=(-u KIT_LANE -u KIT_LANE_BRIEF)
+  fi
+  CMD+=("$CLAUDE_BIN" --remote-control "$sess" --permission-mode auto)
+  if [ -n "$model" ]; then CMD+=(--model "$model"); fi
+  if [ -n "$brief" ]; then CMD+=(--add-dir "$(dirname "$brief")"); fi
+  CMD+=("$prompt")
+}
+
+print_cmd() { printf '%q ' "${CMD[@]}"; printf '\n'; }
+
+start_session() { # runs CMD, then keeps the pane after claude exits so status can show DEAD
+  "${CMD[@]}"
+  tm set-option -t "$1" remain-on-exit on >/dev/null 2>&1 || true
+}
+
+# ---------------------------------------------------------------- init
+cmd_init() {
+  [ $# -ge 1 ] || die "Dùng: superadvisor init <project>"
+  setup_project "$1"
+  [ -d "$TEMPLATE_DIR" ] || die "Không thấy template: $TEMPLATE_DIR"
+  git -C "$ROOT" rev-parse --git-dir >/dev/null 2>&1 || say "Cảnh báo: $ROOT chưa là repo git (lane cần git worktree)."
+  say "Khởi tạo superadvisor cho $PROJ tại $ROOT"
+  local rel dst made=0 kept=0
+  while IFS= read -r rel; do
+    rel="${rel#./}"
+    [ "$rel" != "CLAUDE.md.snippet" ] || continue
+    dst="$ROOT/$rel"
+    if [ -e "$dst" ]; then say "  giữ nguyên (đã có): $rel"; kept=$((kept + 1)); continue; fi
+    mkdir -p "$(dirname "$dst")"
+    cp "$TEMPLATE_DIR/$rel" "$dst"
+    say "  tạo: $rel"; made=$((made + 1))
+  done < <(cd "$TEMPLATE_DIR" && find . -type f | sort)
+
+  # CLAUDE.md: append the snippet only when the marker is missing.
+  if [ -f "$TEMPLATE_DIR/CLAUDE.md.snippet" ]; then
+    if [ ! -f "$ROOT/CLAUDE.md" ]; then
+      cp "$TEMPLATE_DIR/CLAUDE.md.snippet" "$ROOT/CLAUDE.md"; say "  tạo: CLAUDE.md"
+    elif grep -q 'superadvisor:begin' "$ROOT/CLAUDE.md"; then
+      say "  giữ nguyên (đã có khối superadvisor): CLAUDE.md"
+    else
+      { printf '\n'; cat "$TEMPLATE_DIR/CLAUDE.md.snippet"; } >> "$ROOT/CLAUDE.md"
+      say "  nối thêm khối superadvisor vào CLAUDE.md"
+    fi
+  fi
+  local line
+  for line in 'brains/.local/' '.claude/worktrees/'; do
+    grep -qxF "$line" "$ROOT/.gitignore" 2>/dev/null || { printf '%s\n' "$line" >> "$ROOT/.gitignore"; say "  .gitignore += $line"; }
+  done
+  mkdir -p "$LOCAL/briefs" "$LOCAL/samples"
+  say "Xong: $made file mới, $kept file giữ nguyên."
+  say ""
+  say "Bước tiếp theo:"
+  say "  1. Điền các chỗ <...> trong CLAUDE.md và chỉnh brains/config.json (integration_branch, patrol)."
+  say "  2. Commit các file vừa tạo lên nhánh tích hợp (lane tách nhánh từ đó)."
+  say "  3. Mở leader:  $SA_BIN up $ROOT"
+  say "  4. Trên điện thoại: Claude app > Remote Control > chọn ${PROJ}-LEAD, rồi giao việc cho leader."
+}
+
+# ---------------------------------------------------------------- up
+cmd_up() {
+  local dir="" dry=0
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --dry-run) dry=1 ;;
+      -*) die "Tham số lạ cho up: $1" ;;
+      *) dir="$1" ;;
+    esac
+    shift
+  done
+  setup_project "$dir"
+  local sess="${PROJ}-LEAD" prompt
+  prompt="Bạn là LEADER của dự án $PROJ. Đọc CLAUDE.md và brains/lead.md, rồi dùng skill lead: phân loại backlog theo cỡ S/M/L, "
+  prompt="${prompt}viết brief cho từng thẻ, mở lane bằng '$SA_BIN lane open', theo dõi bằng '$SA_BIN status' và '$SA_BIN patrol'. "
+  prompt="${prompt}Chỉ owner duyệt merge, production và quyền. Báo cáo cho owner tối đa 5 dòng."
+  build_cmd "$sess" "$ROOT" "$prompt" "" ""
+  if [ "$dry" = 1 ]; then print_cmd; return 0; fi
+  if has_session "$sess"; then say "Leader $sess đã chạy sẵn (socket '$SOCK'). Xem: $TMUX_BIN -L $SOCK attach -t $sess"; return 0; fi
+  start_session "$sess"
+  say "Đã mở leader $sess. Xem: $TMUX_BIN -L $SOCK attach -t $sess"
+  say "Remote Control: mở app Claude trên điện thoại và chọn phiên '$sess'."
+}
+
+# ---------------------------------------------------------------- lane
+cmd_lane_open() {
+  local name="" brief="" model="" wt="" dry=0
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --brief) need_val $# "$1"; brief="$2"; shift ;;
+      --model) need_val $# "$1"; model="$2"; shift ;;
+      --worktree) need_val $# "$1"; wt="$2"; shift ;;
+      --dry-run) dry=1 ;;
+      -*) die "Tham số lạ cho lane open: $1" ;;
+      *) [ -z "$name" ] || die "Chỉ nhận một tên lane."; name="$1" ;;
+    esac
+    shift
+  done
+  [ -n "$name" ] || die "Dùng: superadvisor lane open <tên> --brief <file> [--model <id>] [--worktree <path>]"
+  case "$name" in *[!a-z0-9-]* | -* | lead) die "Tên lane chỉ gồm a-z, 0-9, '-' (không bắt đầu bằng '-', không phải 'lead')." ;; esac
+  [ -n "$brief" ] && [ -f "$brief" ] || die "Cần --brief <file> tồn tại."
+  setup_project ""
+  local integ branch sess brief_abs brief_dst prompt
+  integ="$(cfg .integration_branch main)"
+  branch="lane/$name"
+  sess="${PROJ}-$(slug_upper "$name")"
+  [ -n "$wt" ] || wt="$ROOT/.claude/worktrees/$name"
+  brief_abs="$(cd "$(dirname "$brief")" && pwd)/$(basename "$brief")"
+  brief_dst="$LOCAL/briefs/$name.md"
+  git -C "$ROOT" rev-parse --verify --quiet "$integ" >/dev/null || die "Không thấy nhánh tích hợp '$integ' (sửa brains/config.json)."
+  prompt="Bạn là một LANE: một thẻ, một worktree, một PR. Làm đúng brief dưới đây, chạy test được nêu, mở PR rồi dừng. KHÔNG merge. Brief lưu tại $brief_dst."
+  prompt="$prompt"$'\n\n'"$(cat "$brief_abs")"
+  build_cmd "$sess" "$wt" "$prompt" "$model" "$brief_dst"
+
+  if [ "$dry" = 1 ]; then
+    [ -d "$wt" ] || say "git -C $ROOT worktree add -b $branch $wt $integ"
+    say "cp $brief_abs $brief_dst"
+    print_cmd
+    return 0
+  fi
+  ! has_session "$sess" || die "Lane $sess đang chạy. Dùng 'lane close $name' trước."
+  if [ -d "$wt" ]; then
+    say "Dùng lại worktree: $wt"
+  else
+    mkdir -p "$(dirname "$wt")"
+    if git -C "$ROOT" show-ref --verify --quiet "refs/heads/$branch"; then
+      git -C "$ROOT" worktree add -q "$wt" "$branch"
+    else
+      git -C "$ROOT" worktree add -q -b "$branch" "$wt" "$integ"
+    fi
+    say "Tạo worktree $wt (nhánh $branch từ $integ)"
+  fi
+  mkdir -p "$LOCAL/briefs"
+  [ "$brief_abs" -ef "$brief_dst" ] || cp "$brief_abs" "$brief_dst"
+  start_session "$sess"
+  say "Đã mở lane $sess. Xem: $TMUX_BIN -L $SOCK attach -t $sess (Remote Control: '$sess')"
+}
+
+cmd_lane_close() {
+  local name="" rm_wt=0
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --rm-worktree) rm_wt=1 ;;
+      -*) die "Tham số lạ cho lane close: $1" ;;
+      *) name="$1" ;;
+    esac
+    shift
+  done
+  [ -n "$name" ] || die "Dùng: superadvisor lane close <tên> [--rm-worktree]"
+  setup_project ""
+  local sess="${PROJ}-$(slug_upper "$name")" branch="lane/$name" wt="$ROOT/.claude/worktrees/$name" integ
+  if has_session "$sess"; then tm kill-session -t "=$sess"; say "Đã tắt session $sess."; else say "Session $sess không chạy."; fi
+  rm -f "$LOCAL/samples/$sess.txt"
+  [ "$rm_wt" = 1 ] || { say "Giữ worktree $wt (thêm --rm-worktree để xoá sau khi merge)."; return 0; }
+  integ="$(cfg .integration_branch main)"
+  if [ -n "$(git -C "$ROOT" branch --merged "$integ" --format='%(refname:short)' --list "$branch" 2>/dev/null)" ]; then
+    [ ! -d "$wt" ] || git -C "$ROOT" worktree remove "$wt"
+    git -C "$ROOT" branch -d "$branch" >/dev/null
+    say "Đã xoá worktree và nhánh $branch (đã merge vào $integ)."
+  else
+    say "Nhánh $branch CHƯA merge vào $integ: giữ nguyên worktree."
+  fi
+}
+
+cmd_lane() {
+  local sub="${1:-}"
+  [ $# -eq 0 ] || shift
+  case "$sub" in
+    open) cmd_lane_open "$@" ;;
+    close) cmd_lane_close "$@" ;;
+    *) die "Dùng: superadvisor lane open|close ... (xem --help)" ;;
+  esac
+}
+
+# ---------------------------------------------------------------- status / patrol / report
+# classify: read pane text on stdin, print WAITING | BUSY | IDLE (looks at the last 15 non-empty lines).
+classify() {
+  local t
+  t="$(grep -v '^[[:space:]]*$' | tail -n 15 || true)"
+  if grep -Eqi 'do you want to|allow this|\(y/n\)|1\. yes|yes, and (don.t|do not) ask|waiting for (your )?(permission|approval)' <<<"$t"; then
+    echo WAITING
+  elif grep -Eqi 'esc to interrupt|ctrl\+c to interrupt|(✻|✽|✶|✳|✢) .*…' <<<"$t"; then
+    echo BUSY
+  else
+    echo IDLE
+  fi
+}
+
+# pane_state <session>: print "STATE|minutes". Minutes = time since the letters of the pane last changed.
+# Digits and symbols are dropped before hashing so timers and spinners do not look like progress.
+pane_state() {
+  local s="$1" dead cap st h prev="" ts="" now age f
+  now="${SA_NOW:-$(date +%s)}"
+  dead="$(tm list-panes -t "$s" -F '#{pane_dead}' 2>/dev/null | head -n 1 || true)"
+  cap="$(tm capture-pane -p -t "$s" 2>/dev/null || true)"
+  if [ "$dead" = 1 ]; then st=DEAD; else st="$(classify <<<"$cap")"; fi
+  h="$(printf '%s' "$cap" | LC_ALL=C tr -cd 'A-Za-z \n' | cksum | cut -d' ' -f1)"
+  f="$LOCAL/samples/$s.txt"
+  mkdir -p "$LOCAL/samples"
+  if [ -f "$f" ]; then read -r prev ts < "$f" || true; fi
+  if [ "$prev" = "$h" ] && [ -n "$ts" ]; then
+    age=$(( (now - ts) / 60 ))
+  else
+    printf '%s %s\n' "$h" "$now" > "$f"
+    age=0
+  fi
+  [ "$age" -ge 0 ] || age=0
+  printf '%s|%s\n' "$st" "$age"
+}
+
+# collect: one "session|STATE|minutes" line per tmux session that belongs to this project.
+collect() {
+  local s
+  while IFS= read -r s; do
+    [ -n "$s" ] || continue
+    printf '%s|%s\n' "$s" "$(pane_state "$s")"
+  done < <(tm list-sessions -F '#{session_name}' 2>/dev/null | grep "^${PROJ}-" || true)
+}
+
+print_rows() { # print_rows <rows>
+  if [ -z "$1" ]; then say "Không có session nào của $PROJ trên socket '$SOCK'."; return 0; fi
+  local n st m
+  printf '%-28s %-8s %s\n' "SESSION" "STATE" "PHÚT-KHÔNG-ĐỔI"
+  while IFS='|' read -r n st m; do printf '%-28s %-8s %sm\n' "$n" "$st" "$m"; done <<<"$1"
+}
+
+cmd_status() {
+  setup_project ""
+  print_rows "$(collect)"
+}
+
+cmd_patrol() {
+  setup_project ""
+  local wmin smin rows ts n st m flags=0 msg
+  wmin="$(cfg .patrol.waiting_min 5)"
+  smin="$(cfg .patrol.stuck_min 20)"
+  mkdir -p "$LOCAL"
+  rows="$(collect)"
+  print_rows "$rows"
+  [ -n "$rows" ] || return 0
+  ts="$(date '+%Y-%m-%d %H:%M:%S')"
+  while IFS='|' read -r n st m; do
+    printf '%s %s %s %sm\n' "$ts" "$n" "$st" "$m" >> "$LOCAL/patrol.log"
+    msg=""
+    if [ "$st" = DEAD ]; then
+      msg="KẸT: $n đã chết (pane dead): mở lại bằng 'lane open' hoặc báo owner"
+    elif [ "$st" = WAITING ] && [ "$m" -ge "$wmin" ]; then
+      msg="KẸT: $n chờ duyệt quyền $m phút (ngưỡng $wmin): owner duyệt hoặc leader viết lại brief hẹp hơn"
+    elif [ "$st" != WAITING ] && [ "${n%-LEAD}" = "$n" ] && [ "$m" -ge "$smin" ]; then
+      msg="KẸT: $n không đổi $m phút (ngưỡng $smin), trạng thái $st: xong chưa báo, hay đang kẹt?"
+    fi
+    if [ -n "$msg" ]; then say "$msg"; printf '%s %s\n' "$ts" "$msg" >> "$LOCAL/patrol.log"; flags=$((flags + 1)); fi
+  done <<<"$rows"
+  [ "$flags" -gt 0 ] || say "Tuần tra: không có lane kẹt."
+}
+
+cmd_report() {
+  setup_project ""
+  local c ks ev
+  say "== Báo cáo $PROJ - $(date '+%Y-%m-%d %H:%M') =="
+  say "-- Lane --"
+  print_rows "$(collect)"
+  say "-- Cờ tuần tra gần nhất --"
+  c=""
+  if [ -f "$LOCAL/patrol.log" ]; then c="$(grep 'KẸT' "$LOCAL/patrol.log" | tail -n 5 || true)"; fi
+  if [ -n "$c" ]; then say "$c"; else say "(không có)"; fi
+  say "-- Commit hôm nay --"
+  c="$(git -C "$ROOT" log --since=midnight --oneline 2>/dev/null | head -n 20 || true)"
+  if [ -n "$c" ]; then say "$c"; else say "(chưa có commit)"; fi
+  ks="${KIT_STATS_BIN:-$SA_HOME/plugin/scripts/kit-stats.sh}"
+  ev="$ROOT/.claude/metrics/events.jsonl"
+  if [ -f "$ks" ] && [ -f "$ev" ]; then
+    say "-- Chi phí (kit-stats) --"
+    c="$(cd "$ROOT" && bash "$ks" 2>&1 | grep -Ei 'main session|opus|sonnet|haiku' | head -n 8 || true)"
+    if [ -n "$c" ]; then say "$c"; else say "(kit-stats không in dòng chi phí)"; fi
+  else
+    say "(chưa có số đo chi phí: cần plugin/scripts/kit-stats.sh và .claude/metrics/events.jsonl)"
+  fi
+}
+
+# ---------------------------------------------------------------- cron
+cmd_cron() {
+  setup_project "${1:-}"
+  cat <<EOF
+# Mẫu để anh tự dán vào 'crontab -e' (superadvisor KHÔNG tự cài):
+PATH=/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin
+*/15 * * * * cd $ROOT && SA_PROJECT=$ROOT $SA_BIN patrol >> $LOCAL/cron.log 2>&1
+0 6 * * *    cd $ROOT && SA_PROJECT=$ROOT $SA_BIN report >> $LOCAL/report.log 2>&1
+
+# Mẫu launchd (macOS): lưu thành ~/Library/LaunchAgents/superadvisor.patrol.plist rồi 'launchctl load'.
+# Tuần tra mỗi 15 phút; với report đổi StartInterval thành StartCalendarInterval {Hour=6, Minute=0}.
+<?xml version="1.0" encoding="UTF-8"?>
+<plist version="1.0"><dict>
+  <key>Label</key><string>superadvisor.patrol</string>
+  <key>ProgramArguments</key><array>
+    <string>$SA_BIN</string><string>patrol</string></array>
+  <key>EnvironmentVariables</key><dict>
+    <key>SA_PROJECT</key><string>$ROOT</string>
+    <key>PATH</key><string>/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin</string></dict>
+  <key>StartInterval</key><integer>900</integer>
+  <key>StandardOutPath</key><string>$LOCAL/cron.log</string>
+</dict></plist>
+EOF
+}
+
+# ---------------------------------------------------------------- main
+main() {
+  local sub="${1:-}"
+  [ $# -eq 0 ] || shift
+  case "$sub" in
+    init) cmd_init "$@" ;;
+    up) cmd_up "$@" ;;
+    lane) cmd_lane "$@" ;;
+    status) cmd_status "$@" ;;
+    patrol) cmd_patrol "$@" ;;
+    report) cmd_report "$@" ;;
+    cron) cmd_cron "$@" ;;
+    -h | --help | help | "") usage ;;
+    *) usage >&2; die "Lệnh lạ: $sub" ;;
+  esac
+}
+
+main "$@"
