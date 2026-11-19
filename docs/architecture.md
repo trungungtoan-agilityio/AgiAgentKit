@@ -1,14 +1,16 @@
-# Kiến trúc AgiAgentKit
+# AgiAgentKit architecture
 
-Hai phần tách bạch: **CLI `bin/superadvisor`** (điều phối tmux + worktree, không phụ thuộc plugin) và **plugin
-`plugin/`** (agent, hook, script đo, skill `lead`). `template/` là phần chép vào project bằng
-`superadvisor init`: rules, `brains/` và khối `CLAUDE.md`.
+English · [Tiếng Việt](architecture.vi.md)
 
-## Sơ đồ thành phần
+Two separate parts: the **`bin/superadvisor` CLI** (tmux + worktree orchestration, no dependency on the plugin) and
+the **`plugin/`** (agents, hooks, metrics scripts, the `lead` skill). `template/` is what `superadvisor init` copies
+into a project: rules, `brains/` and a `CLAUDE.md` block.
+
+## Component diagram
 
 ```mermaid
 flowchart LR
-  Owner([Owner<br/>điện thoại / terminal]) -- Remote Control --> Leader[Leader<br/>session PROJ-LEAD]
+  Owner([Owner<br/>phone / terminal]) -- Remote Control --> Leader[Leader<br/>session PROJ-LEAD]
   Leader -- lane open --> L1[Lane 1<br/>worktree lane/c1]
   Leader -- lane open --> L2[Lane 2<br/>worktree lane/c3]
   Brains[(brains/<br/>lead.md · decisions.md<br/>directives/ · inbox/)] --> Leader
@@ -27,15 +29,15 @@ flowchart LR
   Events --> Stats[kit-stats.sh<br/>token-watch.sh<br/>superadvisor report]
 ```
 
-| Thành phần | Ở đâu | Vai trò |
-|------------|-------|---------|
-| Leader | tmux socket `sa`, session `<PROJ>-LEAD` | Điều phối; đọc `brains/`, dùng skill `lead` |
-| Lane | session `<PROJ>-<TÊN>`, worktree `lane/<tên>`, env `KIT_LANE=1` | Làm đúng một brief, mở một PR |
-| Brains | `brains/` (git) và `brains/.local/` (không vào git) | Quyền, quyết định, chỉ thị, brief, nhật ký patrol |
-| Hooks | `plugin/hooks/` | Chặn lãng phí token, giữ lane khỏi việc của owner, ghi số đo |
-| Metrics | `.claude/metrics/events.jsonl` ở checkout chính | Nguồn dữ liệu cho `kit-stats.sh`, `token-watch.sh`, `report` |
+| Component | Where | Role |
+|-----------|-------|------|
+| Leader | tmux socket `sa`, session `<PROJ>-LEAD` | Coordinates; reads `brains/`, uses the `lead` skill |
+| Lane | session `<PROJ>-<NAME>`, worktree `lane/<name>`, env `KIT_LANE=1` | Does exactly one brief, opens one PR |
+| Brains | `brains/` (in git) and `brains/.local/` (not in git) | Permissions, decisions, directives, briefs, patrol log |
+| Hooks | `plugin/hooks/` | Stop token waste, keep lanes off owner-only work, record metrics |
+| Metrics | `.claude/metrics/events.jsonl` in the main checkout | Data source for `kit-stats.sh`, `token-watch.sh`, `report` |
 
-## Tuần tự một thẻ việc
+## One card, step by step
 
 ```mermaid
 sequenceDiagram
@@ -45,47 +47,51 @@ sequenceDiagram
   participant Lane as Lane (tmux + worktree)
   participant Hooks
   participant Events as events.jsonl
-  Owner->>Leader: "Làm thẻ C1 và C3" (Remote Control)
-  Leader->>Leader: đọc brains/, phân loại S/M/L, viết brief
+  Owner->>Leader: "Do cards C1 and C3" (Remote Control)
+  Leader->>Leader: read brains/, size S/M/L, write a brief
   Leader->>Lane: superadvisor lane open c3 --brief file
-  Note over Lane: tạo worktree lane/c3 và session KIT_LANE=1
-  loop trong lúc làm việc
-    Lane->>Hooks: mỗi lệnh gọi công cụ (PreToolUse)
-    Hooks-->>Lane: cho qua / nhắc / deny (turn-guard, test-budget, owner-guard)
+  Note over Lane: creates worktree lane/c3 and a session with KIT_LANE=1
+  loop while working
+    Lane->>Hooks: every tool call (PreToolUse)
+    Hooks-->>Lane: allow / remind / deny (turn-guard, test-budget, owner-guard)
   end
-  Lane->>Lane: builder viết code, tester viết test, mở PR
-  Hooks->>Events: SubagentStop và Stop ghi token, thời lượng
-  Leader->>Lane: superadvisor patrol (định kỳ)
-  Lane-->>Leader: nếu chờ quyền > 5 phút hoặc không đổi > 20 phút: KẸT
-  Leader->>Lane: đóng lane, viết lại brief hẹp hơn, mở lại
-  Leader->>Owner: PR sẵn sàng, cần duyệt (tối đa 5 dòng)
-  Owner->>Leader: "M <số PR>"
-  Leader->>Leader: merge trong luật brains/lead.md, đúng HEAD, test xanh
+  Lane->>Lane: builder writes code, tester writes tests, opens PR
+  Hooks->>Events: SubagentStop and Stop record tokens, duration
+  Leader->>Lane: superadvisor patrol (periodically)
+  Lane-->>Leader: if waiting on a permission > 5 min or unchanged > 20 min: STUCK
+  Leader->>Lane: close lane, write a narrower brief, reopen
+  Leader->>Owner: PR ready, needs approval (at most 5 lines)
+  Owner->>Leader: "M <PR number>"
+  Leader->>Leader: merge within brains/lead.md rules, right HEAD, tests green
   Leader->>Lane: lane close c3 --rm-worktree
-  Leader->>Owner: superadvisor report (lane, cờ kẹt, commit, chi phí)
+  Leader->>Owner: superadvisor report (lanes, stuck flags, commits, cost)
 ```
 
-Ghi chú cho từng bước:
+Notes per step:
 
-- **`lane open`** kiểm tên (a-z, 0-9, gạch ngang), chép brief vào `brains/.local/briefs/`, tạo worktree và nhánh
-  `lane/<tên>` (dùng lại nếu đã có), rồi mở session tmux với `KIT_LANE=1`, `KIT_LANE_NAME`, `KIT_LANE_BRIEF`. Model
-  mặc định là sonnet; `--model` để đổi. `--dry-run` in lệnh mà không chạy.
-- **Hook** chạy trong chính session của lane. `owner-guard` chỉ hoạt động khi `KIT_LANE=1` và luôn **deny** (không có
-  ai để hỏi); các hook còn lại **deny** ở auto mode và **ask** ở chế độ khác.
-- **Số đo** ghi về checkout chính (không phải worktree) nên còn nguyên sau khi worktree bị xoá. Hook đo không bao giờ
-  chặn: lỗi thì thoát im lặng.
-- **`patrol`** đọc trạng thái tmux (BUSY / IDLE / WAITING / DEAD), so với ngưỡng `patrol.waiting_min` và
-  `patrol.stuck_min` trong `brains/config.json`, ghi `brains/.local/patrol.log`. `superadvisor cron` in mẫu để chạy
-  định kỳ.
-- **Merge** mặc định chỉ khi owner nói rõ; điều kiện tối thiểu là test xanh trên đúng HEAD và không còn High/Critical
-  sau tối đa 2 vòng review. Phát hành, deploy, đổi quyền không nằm trong quyền của leader.
+- **`lane open`** checks the name (a-z, 0-9, hyphen), copies the brief into `brains/.local/briefs/`, creates the
+  worktree and branch `lane/<name>` (reused if it already exists), then opens a tmux session with `KIT_LANE=1`,
+  `KIT_LANE_NAME`, `KIT_LANE_BRIEF`. With no `--model`, the lane runs on Claude Code's default model; the `lead` skill
+  tells the leader to use sonnet and pick opus only when a card needs judgement. `--dry-run` prints the commands
+  without running them.
+- **Hooks** run inside the lane's own session. `owner-guard` only acts when `KIT_LANE=1` and always **denies** (there
+  is nobody to ask); the other blocking hooks **deny** in auto mode and **ask** in other modes.
+- **Metrics** are written to the main checkout (not the worktree), so they survive when the worktree is removed.
+  Metrics hooks never block: on error they exit quietly.
+- **`patrol`** reads the tmux state (BUSY / IDLE / WAITING / DEAD), compares it with `patrol.waiting_min` and
+  `patrol.stuck_min` in `brains/config.json`, and writes `brains/.local/patrol.log`. `superadvisor cron` prints
+  samples for running it on a schedule.
+- **Merge** by default happens only when the owner says so; the minimum is green tests on the exact HEAD and no
+  High/Critical findings left after at most 2 review rounds. Releases, deploys and permission changes are outside the
+  leader's authority.
 
-## Quyết định thiết kế
+## Design decisions
 
-- **Hook chỉ để tiết kiệm, không phải bảo mật.** Thiếu `jq` thì cho qua; mục tiêu là chặn thói quen đốt token, không
-  chặn kẻ xấu.
-- **Phân tầng model theo loại việc**, ghim trong frontmatter agent; `agent-routing` chặn việc đè model.
-- **Leader mỏng.** Nó không tự code nặng và không đọc file lớn; việc đó giao lane hoặc `scout`, để ngữ cảnh của
-  leader (khoản đắt nhất, vì sống lâu) nhỏ và rẻ.
-- **Một thẻ = một worktree = một PR**, nên lane song song không giẫm file của nhau và mỗi PR review được độc lập.
-- **Dữ liệu chạy máy ngoài git**: `.claude/metrics/` và `brains/.local/` nằm trong `.gitignore`.
+- **Hooks save tokens; they are not security.** Without `jq` they let everything through; the goal is to stop
+  token-burning habits, not to stop an attacker.
+- **Model tier by kind of work**, pinned in the agent frontmatter; `agent-routing` blocks model overrides.
+- **A thin leader.** It does not write heavy code and does not read large files; that goes to a lane or to `scout`, so
+  the leader's context (the most expensive item, because it lives longest) stays small and cheap.
+- **One card = one worktree = one PR**, so parallel lanes do not step on each other's files and each PR can be
+  reviewed on its own.
+- **Runtime data stays out of git**: `.claude/metrics/` and `brains/.local/` are git-ignored.

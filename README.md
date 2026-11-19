@@ -79,6 +79,16 @@ Hook thresholds, metrics and every CLI command are in [docs/reference.md](docs/r
 Slides from the Agility IO talk: [PDF](docs/talk/Session-Superadvisor-AgilityIO.pdf) ·
 [PowerPoint](docs/talk/Session-Superadvisor-AgilityIO.pptx).
 
+## Docs
+
+- [Install guide](docs/INSTALL.md)
+- [Architecture](docs/architecture.md)
+- [Lifecycle of one card](docs/lifecycle.md)
+- [FAQ](docs/faq.md)
+- [Reference](docs/reference.md)
+- [One-page explainer](docs/explainer.html) (open the file in a browser)
+- [Benchmark](bench/README.md)
+
 ## Try the demo
 
 `demo-app/` is a small "library loans" service with a six-card backlog, from small fixes to one hard bug. These
