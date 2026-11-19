@@ -28,12 +28,14 @@ while [ $# -gt 0 ]; do case "$1" in -u) shift ;; -L) shift 2 ;; *) break ;; esac
 sub="${1:-}"; shift
 target=""; sname=""; prev=""
 for a in "$@"; do
-  [ "$prev" = -t ] && target="${a#=}"
+  [ "$prev" = -t ] && { target="${a#=}"; target="${target%:}"; }
   [ "$prev" = -s ] && sname="$a"
   prev="$a"
 done
 case "$sub" in
-  new-session) echo "$sname" >> "$D/sessions" ;;
+  new-session) echo "$sname" >> "$D/sessions"; mkdir -p "$D/path"; c=""; prev=""
+               for a in "$@"; do [ "$prev" = -c ] && c="$a"; prev="$a"; done; printf '%s' "$c" > "$D/path/$sname" ;;
+  display-message) cat "$D/path/$target" 2>/dev/null ;;
   has-session) grep -qx "$target" "$D/sessions" ;;
   list-sessions) cat "$D/sessions" ;;
   list-panes) cat "$D/dead/$target" 2>/dev/null || echo 0 ;;
@@ -152,23 +154,25 @@ EOF
 chmod +x "$TMP/bin/gh"
 mkdir -p "$FAKE_DIR/gh-merged"
 : > "$FAKE_DIR/sessions"; rm -rf "$P/brains/.local/samples"
-for l in done-card fresh-card dirty-card sq-card; do "$SA" lane open "$l" --brief "$TMP/brief.md" >/dev/null 2>&1; done
-for l in done-card dirty-card sq-card; do
+for l in done-card fresh-card dirty-card sq-card open-card; do "$SA" lane open "$l" --brief "$TMP/brief.md" >/dev/null 2>&1; done
+for l in done-card dirty-card sq-card open-card; do
   W="$P/.claude/worktrees/$l"; echo x > "$W/$l.txt"; git -C "$W" add "$l.txt"
   git -C "$W" -c user.name=tester -c user.email=tester@example.com commit -q -m "feat: $l"
   git -C "$P" rev-parse "lane/$l" > "$FAKE_DIR/gh-merged/lane_$l"   # squash-merged PR, head = branch tip
 done
 echo wip > "$P/.claude/worktrees/dirty-card/wip.txt"
+rm -f "$FAKE_DIR/gh-merged/lane_open-card"   # open-card has commits but no merged PR
 "$SA" lane close sq-card --rm-worktree > "$TMP/sq.out" 2>&1
 t "lane close --rm-worktree accepts a squash-merged branch" test ! -d "$P/.claude/worktrees/sq-card"
 t "lane close deletes the squash-merged branch" test -z "$(git -C "$P" branch --list lane/sq-card)"
-for s in PROJ-DONE-CARD PROJ-FRESH-CARD PROJ-DIRTY-CARD; do printf '│ > │\n  ? for shortcuts\n' > "$FAKE_DIR/pane/$s"; done
+for s in PROJ-DONE-CARD PROJ-FRESH-CARD PROJ-DIRTY-CARD PROJ-OPEN-CARD; do printf '│ > │\n  ? for shortcuts\n' > "$FAKE_DIR/pane/$s"; done
 SA_NOW=2000000 "$SA" patrol --clean > "$TMP/clean0.out" 2>&1
 t "clean: lane idle < idle_close_min is kept" has "$TMP/clean0.out" "Keep PROJ-DONE-CARD: IDLE 0m"
 SA_NOW=$((2000000 + 1860)) "$SA" patrol --clean > "$TMP/clean1.out" 2>&1
 t "clean: merged idle lane would close" has "$TMP/clean1.out" "Would close PROJ-DONE-CARD"
 t "clean: lane without commits is kept" has "$TMP/clean1.out" "Keep PROJ-FRESH-CARD: no commits"
 t "clean: dirty worktree is kept" has "$TMP/clean1.out" "Keep PROJ-DIRTY-CARD: worktree dirty"
+t "clean: unmerged lane is kept" has "$TMP/clean1.out" "Keep PROJ-OPEN-CARD: lane/open-card not merged"
 t "clean without --apply keeps the worktree" test -d "$P/.claude/worktrees/done-card"
 SA_NOW=$((2000000 + 1860)) "$SA" patrol --clean --apply > "$TMP/clean2.out" 2>&1
 t "clean --apply removes the worktree" test ! -d "$P/.claude/worktrees/done-card"
@@ -190,9 +194,10 @@ echo "== cron --install / --uninstall (fakes only)"
 printf '#!/usr/bin/env bash\nprintf "%%s\\n" "$*" >> "$FAKE_DIR/launchctl.log"\n' > "$TMP/bin/launchctl"
 cat > "$TMP/bin/crontab" <<'EOF'
 #!/usr/bin/env bash
-if [ "$1" = -l ]; then cat "$FAKE_DIR/crontab" 2>/dev/null || exit 1; else cat > "$FAKE_DIR/crontab"; fi
+if [ "$1" = -l ]; then cat "$FAKE_DIR/crontab" 2>/dev/null || { echo "no crontab for tester" >&2; exit 1; }; else cat > "$FAKE_DIR/crontab"; fi
 EOF
 chmod +x "$TMP/bin/launchctl" "$TMP/bin/crontab"
+printf '#!/usr/bin/env bash\necho "crontab: permission denied" >&2; exit 1\n' > "$TMP/bin/badcrontab"; chmod +x "$TMP/bin/badcrontab"
 export SA_LAUNCHD_DIR="$TMP/la" SA_LAUNCHCTL_BIN="$TMP/bin/launchctl" SA_CRONTAB_BIN="$TMP/bin/crontab"
 SA_CRON_MODE=launchd "$SA" cron --install --dry-run > "$TMP/cd.out" 2>&1
 t "launchd --dry-run prints a plist" has "$TMP/cd.out" "<integer>900</integer>"
@@ -217,6 +222,8 @@ t "crontab review 22:00" hasre "$FAKE_DIR/crontab" '^0 22 .* review'
 t "crontab report 08:00" hasre "$FAKE_DIR/crontab" '^0 8 .* report'
 SA_CRON_MODE=crontab "$SA" cron --uninstall > /dev/null 2>&1
 t "crontab uninstall restores the original" cmp -s "$FAKE_DIR/crontab" "$TMP/ct.before"
+SA_CRONTAB_BIN="$TMP/bin/badcrontab" SA_CRON_MODE=crontab "$SA" cron --install > "$TMP/ctbad.out" 2>&1
+t "crontab -l failure aborts the install" has "$TMP/ctbad.out" "crontab -l failed"
 
 echo "== cron / help"
 "$SA" cron > "$TMP/cron.out" 2>&1

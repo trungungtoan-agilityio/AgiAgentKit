@@ -9,7 +9,7 @@
 | `superadvisor lane open <name> --brief <file> [--model <id>] [--worktree <path>] [--dry-run]` | Opens a lane: worktree, branch `lane/<name>`, a tmux session with `KIT_LANE=1`. |
 | `superadvisor lane close <name> [--rm-worktree]` | Stops a lane. Deletes the worktree only if its branch is merged (a squash-merged PR whose head is the branch tip counts). |
 | `superadvisor status` | One line per session: BUSY, IDLE, WAITING or DEAD, and minutes without change. |
-| `superadvisor patrol [--clean [--apply]]` | `status`, plus a `patrol.log` entry and a stuck flag for lanes over the threshold. `--clean` lists lanes that are IDLE for `idle_close_min`, merged, with a clean worktree and no unpushed commits; `--apply` closes them and removes the worktree. |
+| `superadvisor patrol [--clean [--apply]]` | `status`, plus a `patrol.log` entry and a stuck flag for lanes over the threshold. `--clean` lists lanes that are IDLE for `idle_close_min`, merged, with a clean worktree and no unpushed commits; `--apply` closes them and removes the worktree (git-ignored files in it go too). |
 | `superadvisor report` | Short daily report: lanes, stuck flags, commits, estimated cost. |
 | `superadvisor review` | Read-only nightly review, saved to `brains/.local/reviews/<date>.md`: open PRs (needs `gh`), lanes, today's stuck flags, today's commits on the integration branch, estimated cost. |
 | `superadvisor cron [--install\|--uninstall] [--project <p>] [--dry-run]` | No flag: prints samples. `--install`: `patrol --clean --apply` every 15 minutes, `review` at 22:00, `report` at 08:00 (launchd on macOS, a marked crontab block on Linux). Idempotent. Logs go to `brains/.local/`. |

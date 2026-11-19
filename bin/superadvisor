@@ -81,7 +81,7 @@ branch_merged() {
   local tip heads
   tip="$(git -C "$ROOT" rev-parse --verify --quiet "refs/heads/$1")" || return 1
   if command -v "$GH_BIN" >/dev/null 2>&1; then
-    heads="$(cd "$ROOT" && "$GH_BIN" pr list --head "$1" --state merged --json headRefOid --jq '.[].headRefOid' 2>/dev/null || true)"
+    heads="$(cd "$ROOT" && "$GH_BIN" pr list --head "$1" --base "$2" --state merged --json headRefOid --jq '.[].headRefOid' 2>/dev/null || true)"
     if printf '%s\n' "$heads" | grep -qx "$tip"; then return 0; fi
   fi
   git -C "$ROOT" merge-base --is-ancestor "$tip" "$2" 2>/dev/null
@@ -260,11 +260,15 @@ cmd_lane_close() {
   [ "$rm_wt" = 1 ] || { say "Giữ worktree $wt (thêm --rm-worktree để xoá sau khi merge)."; return 0; }
   integ="$(cfg .integration_branch main)"
   if branch_merged "$branch" "$integ"; then
-    [ ! -d "$wt" ] || git -C "$ROOT" worktree remove "$wt"
-    git -C "$ROOT" branch -D "$branch" >/dev/null
+    if [ -d "$wt" ]; then
+      [ "$(git -C "$wt" symbolic-ref -q HEAD 2>/dev/null)" = "refs/heads/$branch" ] || die "Worktree $wt is not on $branch: kept."
+      git -C "$ROOT" worktree remove "$wt" || die "Could not remove worktree $wt."
+    fi
+    git -C "$ROOT" branch -D "$branch" >/dev/null || die "Could not delete branch $branch."
     say "Đã xoá worktree và nhánh $branch (đã merge vào $integ)."
   else
     say "Nhánh $branch CHƯA merge vào $integ: giữ nguyên worktree."
+    return 3
   fi
 }
 
@@ -340,7 +344,7 @@ cmd_patrol() {
   while [ $# -gt 0 ]; do
     case "$1" in
       --clean) clean=1 ;;
-      --apply) apply=1 ;;
+      --apply) apply=1; clean=1 ;;
       *) die "Unknown option for patrol: $1" ;;
     esac
     shift
@@ -372,7 +376,7 @@ cmd_patrol() {
 
 # close_blocker <name> <session> <idle-min> <integ>: print why the lane must stay open; print nothing if it may close.
 close_blocker() {
-  local st m wt ps
+  local st m wt ps sp
   ps="$(pane_state "$2")" # not inline: bash 3.2 would run it with IFS='|'
   IFS='|' read -r st m <<<"$ps"
   if [ "$st" != IDLE ] || [ "$m" -lt "$3" ]; then echo "$st ${m}m"; return 0; fi
@@ -380,7 +384,11 @@ close_blocker() {
   [ "$(git -C "$ROOT" reflog show --format=%H "refs/heads/lane/$1" 2>/dev/null | wc -l)" -gt 1 ] || { echo "no commits on lane/$1"; return 0; }
   branch_merged "lane/$1" "$4" || { echo "lane/$1 not merged into $4"; return 0; }
   wt="$(lane_wt "$1")"
-  if [ ! -d "$wt" ] || [ -n "$(git -C "$wt" status --porcelain 2>/dev/null)" ]; then echo "worktree dirty or missing"; return 0; fi
+  [ -d "$wt" ] && [ "$(git -C "$wt" symbolic-ref -q HEAD 2>/dev/null)" = "refs/heads/lane/$1" ] || { echo "worktree missing or not on lane/$1"; return 0; }
+  sp="$(tm display-message -p -t "=$2:" '#{session_path}' 2>/dev/null || true)"
+  [ -n "$sp" ] && [ "$(cd "$sp" 2>/dev/null && pwd -P)" = "$(cd "$wt" && pwd -P)" ] || { echo "session does not run in $wt"; return 0; }
+  ps="$(git -C "$wt" status --porcelain 2>&1)" || { echo "git status failed"; return 0; }
+  [ -z "$ps" ] || { echo "worktree dirty"; return 0; }
   if git -C "$wt" rev-parse --verify --quiet '@{u}' >/dev/null 2>&1 && [ "$(git -C "$wt" rev-list --count '@{u}..HEAD')" != 0 ]; then
     echo "unpushed commits"
   fi
@@ -390,6 +398,7 @@ close_blocker() {
 clean_lanes() {
   local imin integ n st m name why found=0
   imin="$(cfg .patrol.idle_close_min 30)"
+  case "$imin" in '' | *[!0-9]*) die "patrol.idle_close_min must be a number of minutes: $imin" ;; esac
   integ="$(cfg .integration_branch main)"
   while IFS='|' read -r n st m; do
     [ "${n%-LEAD}" = "$n" ] || continue
@@ -409,7 +418,7 @@ clean_lanes() {
 
 cmd_report() {
   setup_project ""
-  local c ks ev
+  local c
   say "== Báo cáo $PROJ - $(date '+%Y-%m-%d %H:%M') =="
   say "-- Lane --"
   print_rows "$(collect)"
@@ -515,7 +524,8 @@ cron_launchd() { # cron_launchd <install|uninstall> <dry>
 
 cron_crontab() { # cron_crontab <install|uninstall> <dry>
   local ct="${SA_CRONTAB_BIN:-crontab}" b="# superadvisor:begin $PROJ" e="# superadvisor:end $PROJ" cur new job when args spec
-  cur="$("$ct" -l 2>/dev/null || true)"
+  cur="$("$ct" -l 2>&1)" || case "$cur" in *"no crontab"*) cur="" ;; *) die "crontab -l failed: $cur" ;; esac
+  if printf '%s\n' "$cur" | grep -qxF "$b" && ! printf '%s\n' "$cur" | grep -qxF "$e"; then die "crontab has '$b' without '$e': fix it by hand."; fi
   new="$(printf '%s\n' "$cur" | awk -v b="$b" -v e="$e" '$0==b{s=1;next} $0==e{s=0;next} !s')"
   if [ "$1" = install ]; then
     [ -z "$new" ] || new="$new"$'\n'
@@ -528,6 +538,7 @@ cron_crontab() { # cron_crontab <install|uninstall> <dry>
   fi
   if [ "$2" = 1 ]; then printf '%s\n' "$new"; return 0; fi
   mkdir -p "$LOCAL"
+  [ -z "$cur" ] || printf '%s\n' "$cur" > "$LOCAL/crontab.bak-$(date +%Y%m%d%H%M%S)"
   printf '%s\n' "$new" | "$ct" -
   say "crontab: superadvisor block for $PROJ ${1}ed."
 }
@@ -553,7 +564,7 @@ cmd_cron() {
     return 0
   fi
   cat <<EOF
-# Mẫu để anh tự dán vào 'crontab -e' (superadvisor KHÔNG tự cài):
+# Mẫu để anh tự dán vào 'crontab -e'. Or install the schedule with: superadvisor cron --install
 PATH=/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin
 */15 * * * * cd $ROOT && SA_PROJECT=$ROOT $SA_BIN patrol >> $LOCAL/cron.log 2>&1
 0 6 * * *    cd $ROOT && SA_PROJECT=$ROOT $SA_BIN report >> $LOCAL/report.log 2>&1
