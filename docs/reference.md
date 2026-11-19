@@ -7,17 +7,19 @@
 | `superadvisor init <project>` | Copies the template (rules, `brains/`, a `CLAUDE.md` block) into the project. Never overwrites. |
 | `superadvisor up [<project>] [--dry-run]` | Starts the leader `<PROJECT>-LEAD` in tmux with Remote Control and auto mode. |
 | `superadvisor lane open <name> --brief <file> [--model <id>] [--worktree <path>] [--dry-run]` | Opens a lane: worktree, branch `lane/<name>`, a tmux session with `KIT_LANE=1`. |
-| `superadvisor lane close <name> [--rm-worktree]` | Stops a lane. Deletes the worktree only if its branch is merged. |
+| `superadvisor lane close <name> [--rm-worktree]` | Stops a lane. Deletes the worktree only if its branch is merged (a squash-merged PR whose head is the branch tip counts). |
 | `superadvisor status` | One line per session: BUSY, IDLE, WAITING or DEAD, and minutes without change. |
-| `superadvisor patrol` | `status`, plus a `patrol.log` entry and a stuck flag for lanes over the threshold. |
+| `superadvisor patrol [--clean [--apply]]` | `status`, plus a `patrol.log` entry and a stuck flag for lanes over the threshold. `--clean` lists lanes that are IDLE for `idle_close_min`, merged, with a clean worktree and no unpushed commits; `--apply` closes them and removes the worktree (git-ignored files in it go too). |
 | `superadvisor report` | Short daily report: lanes, stuck flags, commits, estimated cost. |
-| `superadvisor cron` | Prints a crontab and a launchd sample for `patrol` and `report`. Installs nothing. |
+| `superadvisor review` | Read-only nightly review, saved to `brains/.local/reviews/<date>.md`: open PRs (needs `gh`), lanes, today's stuck flags, today's commits on the integration branch, estimated cost. |
+| `superadvisor cron [--install\|--uninstall] [--project <p>] [--dry-run]` | No flag: prints samples. `--install`: `patrol --clean --apply` every 15 minutes, `review` at 22:00, `report` at 08:00 (launchd on macOS, a marked crontab block on Linux). Idempotent. Logs go to `brains/.local/`. |
 
 | Variable | Default | Meaning |
 |----------|---------|---------|
 | `SA_PROJECT` | current folder | Project folder |
 | `SA_SOCKET` | `sa` | tmux socket name, so the kit's sessions stay apart from yours |
-| `CLAUDE_BIN`, `TMUX_BIN` | `claude`, `tmux` | Binaries to use |
+| `CLAUDE_BIN`, `TMUX_BIN`, `GH_BIN` | `claude`, `tmux`, `gh` | Binaries to use |
+| `SA_LAUNCHD_DIR`, `SA_LAUNCHCTL_BIN`, `SA_CRONTAB_BIN`, `SA_CRON_MODE` | `~/Library/LaunchAgents`, `launchctl`, `crontab`, by OS | Where `cron --install` writes (tests point these at fakes) |
 
 ## Agents
 
@@ -73,8 +75,8 @@ Recent spend. Costs come from a price table; override it with `.claude/metrics/p
 | Path | Content |
 |------|---------|
 | `brains/lead.md` | What the leader does alone, what it asks you, what it never does |
-| `brains/config.json` | `integration_branch`, patrol thresholds (`waiting_min`, `stuck_min`) |
+| `brains/config.json` | `integration_branch`, patrol thresholds (`waiting_min`, `stuck_min`, `idle_close_min`) |
 | `brains/decisions.md` | Decisions already made, so the leader does not ask twice |
 | `brains/directives/` | Standing instructions from you |
 | `brains/inbox/` | New work dropped in for the leader |
-| `brains/.local/` | Runtime data: briefs, patrol log. Git-ignored. |
+| `brains/.local/` | Runtime data: briefs, patrol log, nightly reviews, cron logs. Git-ignored. |

@@ -6,6 +6,7 @@ set -euo pipefail
 
 CLAUDE_BIN="${CLAUDE_BIN:-claude}"
 TMUX_BIN="${TMUX_BIN:-tmux}"
+GH_BIN="${GH_BIN:-gh}"
 SOCK="${SA_SOCKET:-sa}"
 
 # Resolve the real script location (one level of symlink) so we can find ../template and ../plugin.
@@ -37,9 +38,12 @@ Dùng:
                                                Mở một lane: worktree + nhánh lane/<tên> + session tmux.
   superadvisor lane close <tên> [--rm-worktree]  Tắt lane; chỉ xoá worktree khi nhánh đã merge.
   superadvisor status                          Mỗi session một dòng: BUSY/IDLE/WAITING/DEAD + phút không đổi.
-  superadvisor patrol                          status + ghi patrol.log + in "KẸT: ..." cho lane bị kẹt.
+  superadvisor patrol [--clean [--apply]]      status + ghi patrol.log + in "KẸT: ..." cho lane bị kẹt.
+                                               --clean: list idle lanes whose branch is merged; --apply closes them.
   superadvisor report                          Báo cáo ngắn trong ngày (lane, cờ kẹt, commit, chi phí).
-  superadvisor cron                            In (không cài) mẫu crontab/launchd cho patrol và report.
+  superadvisor review                          Nightly review to brains/.local/reviews/<date>.md (PRs, lanes, flags, commits).
+  superadvisor cron [--install|--uninstall] [--project P] [--dry-run]
+                                               No flag: print samples. --install: patrol every 15 min, review 22:00, report 08:00.
 
 Môi trường: CLAUDE_BIN, TMUX_BIN, SA_SOCKET (mặc định sa), SA_PROJECT (thư mục project).
 EOF
@@ -70,6 +74,24 @@ cfg() {
   local f="$BRAINS/config.json" v=""
   if [ -f "$f" ]; then v="$(jq -r "$1 // empty" "$f" 2>/dev/null)" || v=""; fi
   if [ -n "$v" ]; then printf '%s' "$v"; else printf '%s' "$2"; fi
+}
+
+# branch_merged <branch> <integ>: merged into <integ>, or squash-merged (a merged PR whose head is the branch tip).
+branch_merged() {
+  local tip heads
+  tip="$(git -C "$ROOT" rev-parse --verify --quiet "refs/heads/$1")" || return 1
+  if command -v "$GH_BIN" >/dev/null 2>&1; then
+    heads="$(cd "$ROOT" && "$GH_BIN" pr list --head "$1" --base "$2" --state merged --json headRefOid --jq '.[].headRefOid' 2>/dev/null || true)"
+    if printf '%s\n' "$heads" | grep -qx "$tip"; then return 0; fi
+  fi
+  git -C "$ROOT" merge-base --is-ancestor "$tip" "$2" 2>/dev/null
+}
+
+# lane_wt <name>: the worktree checked out on lane/<name>, else the default path.
+lane_wt() {
+  local w
+  w="$(git -C "$ROOT" worktree list --porcelain 2>/dev/null | awk -v b="branch refs/heads/lane/$1" '/^worktree /{w=substr($0,10)} $0==b{print w; exit}')"
+  if [ -n "$w" ]; then printf '%s' "$w"; else printf '%s' "$ROOT/.claude/worktrees/$1"; fi
 }
 
 has_session() { tm has-session -t "=$1" >/dev/null 2>&1; }
@@ -231,17 +253,22 @@ cmd_lane_close() {
   done
   [ -n "$name" ] || die "Dùng: superadvisor lane close <tên> [--rm-worktree]"
   setup_project ""
-  local sess="${PROJ}-$(slug_upper "$name")" branch="lane/$name" wt="$ROOT/.claude/worktrees/$name" integ
+  local sess="${PROJ}-$(slug_upper "$name")" branch="lane/$name" wt integ
+  wt="$(lane_wt "$name")"
   if has_session "$sess"; then tm kill-session -t "=$sess"; say "Đã tắt session $sess."; else say "Session $sess không chạy."; fi
   rm -f "$LOCAL/samples/$sess.txt"
   [ "$rm_wt" = 1 ] || { say "Giữ worktree $wt (thêm --rm-worktree để xoá sau khi merge)."; return 0; }
   integ="$(cfg .integration_branch main)"
-  if [ -n "$(git -C "$ROOT" branch --merged "$integ" --format='%(refname:short)' --list "$branch" 2>/dev/null)" ]; then
-    [ ! -d "$wt" ] || git -C "$ROOT" worktree remove "$wt"
-    git -C "$ROOT" branch -d "$branch" >/dev/null
+  if branch_merged "$branch" "$integ"; then
+    if [ -d "$wt" ]; then
+      [ "$(git -C "$wt" symbolic-ref -q HEAD 2>/dev/null)" = "refs/heads/$branch" ] || die "Worktree $wt is not on $branch: kept."
+      git -C "$ROOT" worktree remove "$wt" || die "Could not remove worktree $wt."
+    fi
+    git -C "$ROOT" branch -D "$branch" >/dev/null || die "Could not delete branch $branch."
     say "Đã xoá worktree và nhánh $branch (đã merge vào $integ)."
   else
     say "Nhánh $branch CHƯA merge vào $integ: giữ nguyên worktree."
+    return 3
   fi
 }
 
@@ -313,6 +340,15 @@ cmd_status() {
 }
 
 cmd_patrol() {
+  local clean=0 apply=0
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --clean) clean=1 ;;
+      --apply) apply=1; clean=1 ;;
+      *) die "Unknown option for patrol: $1" ;;
+    esac
+    shift
+  done
   setup_project ""
   local wmin smin rows ts n st m flags=0 msg
   wmin="$(cfg .patrol.waiting_min 5)"
@@ -335,11 +371,54 @@ cmd_patrol() {
     if [ -n "$msg" ]; then say "$msg"; printf '%s %s\n' "$ts" "$msg" >> "$LOCAL/patrol.log"; flags=$((flags + 1)); fi
   done <<<"$rows"
   [ "$flags" -gt 0 ] || say "Tuần tra: không có lane kẹt."
+  [ "$clean" = 0 ] || clean_lanes "$rows" "$apply"
+}
+
+# close_blocker <name> <session> <idle-min> <integ>: print why the lane must stay open; print nothing if it may close.
+close_blocker() {
+  local st m wt ps sp
+  ps="$(pane_state "$2")" # not inline: bash 3.2 would run it with IFS='|'
+  IFS='|' read -r st m <<<"$ps"
+  if [ "$st" != IDLE ] || [ "$m" -lt "$3" ]; then echo "$st ${m}m"; return 0; fi
+  # A branch never moved since creation is "merged" trivially; require commits of its own.
+  [ "$(git -C "$ROOT" reflog show --format=%H "refs/heads/lane/$1" 2>/dev/null | wc -l)" -gt 1 ] || { echo "no commits on lane/$1"; return 0; }
+  branch_merged "lane/$1" "$4" || { echo "lane/$1 not merged into $4"; return 0; }
+  wt="$(lane_wt "$1")"
+  [ -d "$wt" ] && [ "$(git -C "$wt" symbolic-ref -q HEAD 2>/dev/null)" = "refs/heads/lane/$1" ] || { echo "worktree missing or not on lane/$1"; return 0; }
+  sp="$(tm display-message -p -t "=$2:" '#{session_path}' 2>/dev/null || true)"
+  [ -n "$sp" ] && [ "$(cd "$sp" 2>/dev/null && pwd -P)" = "$(cd "$wt" && pwd -P)" ] || { echo "session does not run in $wt"; return 0; }
+  ps="$(git -C "$wt" status --porcelain 2>&1)" || { echo "git status failed"; return 0; }
+  [ -z "$ps" ] || { echo "worktree dirty"; return 0; }
+  if git -C "$wt" rev-parse --verify --quiet '@{u}' >/dev/null 2>&1 && [ "$(git -C "$wt" rev-list --count '@{u}..HEAD')" != 0 ]; then
+    echo "unpushed commits"
+  fi
+}
+
+# clean_lanes <rows> <apply>: close idle lanes whose branch is merged and whose worktree is clean.
+clean_lanes() {
+  local imin integ n st m name why found=0
+  imin="$(cfg .patrol.idle_close_min 30)"
+  case "$imin" in '' | *[!0-9]*) die "patrol.idle_close_min must be a number of minutes: $imin" ;; esac
+  integ="$(cfg .integration_branch main)"
+  while IFS='|' read -r n st m; do
+    [ "${n%-LEAD}" = "$n" ] || continue
+    name="$(printf '%s' "${n#"$PROJ"-}" | tr 'A-Z' 'a-z')"
+    why="$(close_blocker "$name" "$n" "$imin" "$integ")"
+    if [ -n "$why" ]; then say "Keep $n: $why"; continue; fi
+    found=1
+    if [ "$2" != 1 ]; then say "Would close $n (idle >= ${imin}m, merged, clean). Add --apply to close it."; continue; fi
+    why="$(close_blocker "$name" "$n" "$imin" "$integ")" # re-check right before closing
+    if [ -n "$why" ]; then say "Keep $n: changed ($why)"; continue; fi
+    if (cmd_lane_close "$name" --rm-worktree) </dev/null; then
+      printf '%s AUTO-CLOSE %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$n" >> "$LOCAL/patrol.log"
+    fi
+  done <<<"$1"
+  [ "$found" = 1 ] || say "Clean: nothing to close."
 }
 
 cmd_report() {
   setup_project ""
-  local c ks ev
+  local c
   say "== Báo cáo $PROJ - $(date '+%Y-%m-%d %H:%M') =="
   say "-- Lane --"
   print_rows "$(collect)"
@@ -350,6 +429,11 @@ cmd_report() {
   say "-- Commit hôm nay --"
   c="$(git -C "$ROOT" log --since=midnight --oneline 2>/dev/null | head -n 20 || true)"
   if [ -n "$c" ]; then say "$c"; else say "(chưa có commit)"; fi
+  cost_lines
+}
+
+cost_lines() {
+  local c ks ev
   ks="${KIT_STATS_BIN:-$SA_HOME/plugin/scripts/kit-stats.sh}"
   ev="$ROOT/.claude/metrics/events.jsonl"
   if [ -f "$ks" ] && [ -f "$ev" ]; then
@@ -361,11 +445,126 @@ cmd_report() {
   fi
 }
 
+# review: read-only nightly summary, saved to brains/.local/reviews/<date>.md and printed.
+cmd_review() {
+  setup_project ""
+  local d out c integ
+  d="$(date '+%Y-%m-%d')"
+  integ="$(cfg .integration_branch main)"
+  out="$LOCAL/reviews/$d.md"
+  mkdir -p "$LOCAL/reviews"
+  {
+    say "# Nightly review $PROJ - $d"
+    say ""; say "## Open PRs"
+    if command -v "$GH_BIN" >/dev/null 2>&1; then
+      c="$(cd "$ROOT" && "$GH_BIN" pr list --state open --limit 30 2>&1)" || c="(gh pr list failed: $c)"
+      if [ -n "$c" ]; then say "$c"; else say "(none)"; fi
+    else
+      say "(gh not found: skipped)"
+    fi
+    say ""; say "## Lanes"; print_rows "$(collect)"
+    say ""; say "## Stuck flags today"
+    c=""
+    if [ -f "$LOCAL/patrol.log" ]; then c="$(grep "^$d .*KẸT" "$LOCAL/patrol.log" | tail -n 20 || true)"; fi
+    if [ -n "$c" ]; then say "$c"; else say "(none)"; fi
+    say ""; say "## Commits today on $integ"
+    c="$(git -C "$ROOT" log "$integ" --since=midnight --oneline 2>/dev/null | head -n 30 || true)"
+    if [ -n "$c" ]; then say "$c"; else say "(none)"; fi
+    say ""; say "## Estimated cost"; cost_lines
+  } > "$out"
+  cat "$out"
+  say "Saved: $out"
+}
+
 # ---------------------------------------------------------------- cron
+CRON_PATH="/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin"
+CRON_JOBS="patrol|900|patrol --clean --apply
+review|22:00|review
+report|08:00|report"
+
+xml() { printf '%s' "$1" | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g'; }
+
+plist_for() { # plist_for <label> <when> <job> <args>
+  local a
+  printf '<?xml version="1.0" encoding="UTF-8"?>\n<plist version="1.0"><dict>\n'
+  printf '  <key>Label</key><string>%s</string>\n  <key>ProgramArguments</key><array>\n' "$1"
+  for a in "$SA_BIN" $4; do printf '    <string>%s</string>\n' "$(xml "$a")"; done
+  printf '  </array>\n'
+  case "$2" in
+    *:*) printf '  <key>StartCalendarInterval</key><dict><key>Hour</key><integer>%d</integer><key>Minute</key><integer>%d</integer></dict>\n' \
+           "$((10#${2%:*}))" "$((10#${2#*:}))" ;;
+    *) printf '  <key>StartInterval</key><integer>%s</integer>\n' "$2" ;;
+  esac
+  printf '  <key>EnvironmentVariables</key><dict><key>SA_PROJECT</key><string>%s</string><key>PATH</key><string>%s</string></dict>\n' "$(xml "$ROOT")" "$CRON_PATH"
+  printf '  <key>StandardOutPath</key><string>%s</string>\n' "$(xml "$LOCAL/cron-$3.log")"
+  printf '  <key>StandardErrorPath</key><string>%s</string>\n</dict></plist>\n' "$(xml "$LOCAL/cron-$3.log")"
+}
+
+cron_launchd() { # cron_launchd <install|uninstall> <dry>
+  local lc="${SA_LAUNCHCTL_BIN:-launchctl}" dir="${SA_LAUNCHD_DIR:-$HOME/Library/LaunchAgents}" dom label f job when args
+  dom="gui/$(id -u)"
+  while IFS='|' read -r job when args; do
+    label="com.agiagentkit.superadvisor.$(printf '%s' "$PROJ" | tr 'A-Z' 'a-z').$job"
+    f="$dir/$label.plist"
+    if [ "$2" = 1 ]; then
+      say "# $1 $f"
+      [ "$1" = uninstall ] || plist_for "$label" "$when" "$job" "$args"
+      say "$lc bootout $dom/$label"
+      [ "$1" = uninstall ] || say "$lc bootstrap $dom $f"
+      continue
+    fi
+    "$lc" bootout "$dom/$label" >/dev/null 2>&1 || true
+    if [ "$1" = uninstall ]; then rm -f "$f"; say "Removed $label"; continue; fi
+    mkdir -p "$dir" "$LOCAL"
+    plist_for "$label" "$when" "$job" "$args" > "$f"
+    "$lc" bootstrap "$dom" "$f"
+    say "Installed $label ($when)"
+  done <<<"$CRON_JOBS"
+}
+
+cron_crontab() { # cron_crontab <install|uninstall> <dry>
+  local ct="${SA_CRONTAB_BIN:-crontab}" b="# superadvisor:begin $PROJ" e="# superadvisor:end $PROJ" cur new job when args spec
+  cur="$("$ct" -l 2>&1)" || case "$cur" in *"no crontab"*) cur="" ;; *) die "crontab -l failed: $cur" ;; esac
+  if printf '%s\n' "$cur" | grep -qxF "$b" && ! printf '%s\n' "$cur" | grep -qxF "$e"; then die "crontab has '$b' without '$e': fix it by hand."; fi
+  new="$(printf '%s\n' "$cur" | awk -v b="$b" -v e="$e" '$0==b{s=1;next} $0==e{s=0;next} !s')"
+  if [ "$1" = install ]; then
+    [ -z "$new" ] || new="$new"$'\n'
+    new="$new$b"$'\n'"PATH=$CRON_PATH"
+    while IFS='|' read -r job when args; do
+      case "$when" in *:*) spec="$((10#${when#*:})) $((10#${when%:*})) * * *" ;; *) spec="*/$((when / 60)) * * * *" ;; esac
+      new="$new"$'\n'"$spec cd $(printf '%q' "$ROOT") && SA_PROJECT=$(printf '%q' "$ROOT") $(printf '%q' "$SA_BIN") $args >> $(printf '%q' "$LOCAL/cron-$job.log") 2>&1"
+    done <<<"$CRON_JOBS"
+    new="$new"$'\n'"$e"
+  fi
+  if [ "$2" = 1 ]; then printf '%s\n' "$new"; return 0; fi
+  mkdir -p "$LOCAL"
+  [ -z "$cur" ] || printf '%s\n' "$cur" > "$LOCAL/crontab.bak-$(date +%Y%m%d%H%M%S)"
+  printf '%s\n' "$new" | "$ct" -
+  say "crontab: superadvisor block for $PROJ ${1}ed."
+}
+
 cmd_cron() {
-  setup_project "${1:-}"
+  local dir="" act="" dry=0 mode
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --install) act=install ;;
+      --uninstall) act=uninstall ;;
+      --dry-run) dry=1 ;;
+      --project) need_val $# "$1"; dir="$2"; shift ;;
+      -*) die "Unknown option for cron: $1" ;;
+      *) dir="$1" ;;
+    esac
+    shift
+  done
+  setup_project "$dir"
+  if [ -n "$act" ]; then
+    mode="${SA_CRON_MODE:-}"
+    [ -n "$mode" ] || { if [ "$(uname -s)" = Darwin ]; then mode=launchd; else mode=crontab; fi; }
+    if [ "$mode" = launchd ]; then cron_launchd "$act" "$dry"; else cron_crontab "$act" "$dry"; fi
+    return 0
+  fi
   cat <<EOF
-# Mẫu để anh tự dán vào 'crontab -e' (superadvisor KHÔNG tự cài):
+# Mẫu để anh tự dán vào 'crontab -e'. Or install the schedule with: superadvisor cron --install
 PATH=/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin
 */15 * * * * cd $ROOT && SA_PROJECT=$ROOT $SA_BIN patrol >> $LOCAL/cron.log 2>&1
 0 6 * * *    cd $ROOT && SA_PROJECT=$ROOT $SA_BIN report >> $LOCAL/report.log 2>&1
@@ -397,6 +596,7 @@ main() {
     status) cmd_status "$@" ;;
     patrol) cmd_patrol "$@" ;;
     report) cmd_report "$@" ;;
+    review) cmd_review "$@" ;;
     cron) cmd_cron "$@" ;;
     -h | --help | help | "") usage ;;
     *) usage >&2; die "Lệnh lạ: $sub" ;;

@@ -28,12 +28,14 @@ while [ $# -gt 0 ]; do case "$1" in -u) shift ;; -L) shift 2 ;; *) break ;; esac
 sub="${1:-}"; shift
 target=""; sname=""; prev=""
 for a in "$@"; do
-  [ "$prev" = -t ] && target="${a#=}"
+  [ "$prev" = -t ] && { target="${a#=}"; target="${target%:}"; }
   [ "$prev" = -s ] && sname="$a"
   prev="$a"
 done
 case "$sub" in
-  new-session) echo "$sname" >> "$D/sessions" ;;
+  new-session) echo "$sname" >> "$D/sessions"; mkdir -p "$D/path"; c=""; prev=""
+               for a in "$@"; do [ "$prev" = -c ] && c="$a"; prev="$a"; done; printf '%s' "$c" > "$D/path/$sname" ;;
+  display-message) cat "$D/path/$target" 2>/dev/null ;;
   has-session) grep -qx "$target" "$D/sessions" ;;
   list-sessions) cat "$D/sessions" ;;
   list-panes) cat "$D/dead/$target" 2>/dev/null || echo 0 ;;
@@ -139,6 +141,89 @@ t "report chạy không có metrics" has "$TMP/report.out" "== Báo cáo PROJ"
 t "report liệt kê lane" has "$TMP/report.out" "PROJ-BUSY"
 t "report có cờ KẸT gần nhất" has "$TMP/report.out" "KẸT: PROJ-BUSY"
 t "report có commit hôm nay" has "$TMP/report.out" "init"
+
+echo "== lane close (squash) / patrol --clean"
+cat > "$TMP/bin/gh" <<'EOF'
+#!/usr/bin/env bash
+# Fake gh: merged PR heads come from $FAKE_DIR/gh-merged/<branch with / as _>; open PRs are one fixed line.
+head=""; state=""; prev=""
+for a in "$@"; do [ "$prev" = --head ] && head="$a"; [ "$prev" = --state ] && state="$a"; prev="$a"; done
+if [ "$state" = merged ]; then cat "${FAKE_DIR:?}/gh-merged/${head//\//_}" 2>/dev/null; else echo "#7 feat: open thing"; fi
+true
+EOF
+chmod +x "$TMP/bin/gh"
+mkdir -p "$FAKE_DIR/gh-merged"
+: > "$FAKE_DIR/sessions"; rm -rf "$P/brains/.local/samples"
+for l in done-card fresh-card dirty-card sq-card open-card; do "$SA" lane open "$l" --brief "$TMP/brief.md" >/dev/null 2>&1; done
+for l in done-card dirty-card sq-card open-card; do
+  W="$P/.claude/worktrees/$l"; echo x > "$W/$l.txt"; git -C "$W" add "$l.txt"
+  git -C "$W" -c user.name=tester -c user.email=tester@example.com commit -q -m "feat: $l"
+  git -C "$P" rev-parse "lane/$l" > "$FAKE_DIR/gh-merged/lane_$l"   # squash-merged PR, head = branch tip
+done
+echo wip > "$P/.claude/worktrees/dirty-card/wip.txt"
+rm -f "$FAKE_DIR/gh-merged/lane_open-card"   # open-card has commits but no merged PR
+"$SA" lane close sq-card --rm-worktree > "$TMP/sq.out" 2>&1
+t "lane close --rm-worktree accepts a squash-merged branch" test ! -d "$P/.claude/worktrees/sq-card"
+t "lane close deletes the squash-merged branch" test -z "$(git -C "$P" branch --list lane/sq-card)"
+for s in PROJ-DONE-CARD PROJ-FRESH-CARD PROJ-DIRTY-CARD PROJ-OPEN-CARD; do printf '│ > │\n  ? for shortcuts\n' > "$FAKE_DIR/pane/$s"; done
+SA_NOW=2000000 "$SA" patrol --clean > "$TMP/clean0.out" 2>&1
+t "clean: lane idle < idle_close_min is kept" has "$TMP/clean0.out" "Keep PROJ-DONE-CARD: IDLE 0m"
+SA_NOW=$((2000000 + 1860)) "$SA" patrol --clean > "$TMP/clean1.out" 2>&1
+t "clean: merged idle lane would close" has "$TMP/clean1.out" "Would close PROJ-DONE-CARD"
+t "clean: lane without commits is kept" has "$TMP/clean1.out" "Keep PROJ-FRESH-CARD: no commits"
+t "clean: dirty worktree is kept" has "$TMP/clean1.out" "Keep PROJ-DIRTY-CARD: worktree dirty"
+t "clean: unmerged lane is kept" has "$TMP/clean1.out" "Keep PROJ-OPEN-CARD: lane/open-card not merged"
+t "clean without --apply keeps the worktree" test -d "$P/.claude/worktrees/done-card"
+SA_NOW=$((2000000 + 1860)) "$SA" patrol --clean --apply > "$TMP/clean2.out" 2>&1
+t "clean --apply removes the worktree" test ! -d "$P/.claude/worktrees/done-card"
+t "clean --apply kills the session" lacks "$FAKE_DIR/sessions" "PROJ-DONE-CARD"
+t "clean --apply keeps other lanes" test -d "$P/.claude/worktrees/dirty-card"
+t "clean --apply logs AUTO-CLOSE" has "$P/brains/.local/patrol.log" "AUTO-CLOSE PROJ-DONE-CARD"
+
+echo "== review"
+"$SA" review > "$TMP/review.out" 2>&1
+t "review writes reviews/<date>.md" test -f "$P/brains/.local/reviews/$(date '+%Y-%m-%d').md"
+t "review lists open PRs" has "$TMP/review.out" "#7 feat: open thing"
+t "review lists lanes" has "$TMP/review.out" "PROJ-FRESH-CARD"
+t "review lists today's stuck flags" has "$TMP/review.out" "KẸT: PROJ-"
+t "review lists today's commits" has "$TMP/review.out" "chore: init superadvisor"
+GH_BIN=no-such-gh "$SA" review > "$TMP/review2.out" 2>&1
+t "review without gh skips PRs" has "$TMP/review2.out" "gh not found"
+
+echo "== cron --install / --uninstall (fakes only)"
+printf '#!/usr/bin/env bash\nprintf "%%s\\n" "$*" >> "$FAKE_DIR/launchctl.log"\n' > "$TMP/bin/launchctl"
+cat > "$TMP/bin/crontab" <<'EOF'
+#!/usr/bin/env bash
+if [ "$1" = -l ]; then cat "$FAKE_DIR/crontab" 2>/dev/null || { echo "no crontab for tester" >&2; exit 1; }; else cat > "$FAKE_DIR/crontab"; fi
+EOF
+chmod +x "$TMP/bin/launchctl" "$TMP/bin/crontab"
+printf '#!/usr/bin/env bash\necho "crontab: permission denied" >&2; exit 1\n' > "$TMP/bin/badcrontab"; chmod +x "$TMP/bin/badcrontab"
+export SA_LAUNCHD_DIR="$TMP/la" SA_LAUNCHCTL_BIN="$TMP/bin/launchctl" SA_CRONTAB_BIN="$TMP/bin/crontab"
+SA_CRON_MODE=launchd "$SA" cron --install --dry-run > "$TMP/cd.out" 2>&1
+t "launchd --dry-run prints a plist" has "$TMP/cd.out" "<integer>900</integer>"
+t "launchd --dry-run writes nothing" test ! -d "$TMP/la"
+SA_CRON_MODE=launchd "$SA" cron --install --project "$P" > /dev/null 2>&1
+SA_CRON_MODE=launchd "$SA" cron --install --project "$P" > /dev/null 2>&1
+t "launchd install is idempotent (3 plists)" test "$(ls "$TMP/la" | wc -l | tr -d ' ')" = 3
+t "launchd patrol job runs patrol --clean --apply" has "$TMP/la/com.agiagentkit.superadvisor.proj.patrol.plist" "<string>--apply</string>"
+t "launchd review job at 22:00" has "$TMP/la/com.agiagentkit.superadvisor.proj.review.plist" "<integer>22</integer>"
+t "launchd bootstrap called" has "$FAKE_DIR/launchctl.log" "bootstrap gui/"
+SA_CRON_MODE=launchd "$SA" cron --uninstall --project "$P" > /dev/null 2>&1
+t "launchd uninstall removes plists" test -z "$(ls "$TMP/la")"
+printf '0 1 * * * echo keep\n' > "$FAKE_DIR/crontab"; cp "$FAKE_DIR/crontab" "$TMP/ct.before"
+SA_CRON_MODE=crontab "$SA" cron --install --dry-run > /dev/null 2>&1
+t "crontab --dry-run writes nothing" cmp -s "$FAKE_DIR/crontab" "$TMP/ct.before"
+SA_CRON_MODE=crontab "$SA" cron --install > /dev/null 2>&1
+SA_CRON_MODE=crontab "$SA" cron --install > /dev/null 2>&1
+t "crontab install is idempotent (one block)" test "$(grep -c 'superadvisor:begin PROJ' "$FAKE_DIR/crontab")" = 1
+t "crontab keeps other lines" has "$FAKE_DIR/crontab" "echo keep"
+t "crontab patrol every 15 min with --clean --apply" hasre "$FAKE_DIR/crontab" '^\*/15 .* patrol --clean --apply'
+t "crontab review 22:00" hasre "$FAKE_DIR/crontab" '^0 22 .* review'
+t "crontab report 08:00" hasre "$FAKE_DIR/crontab" '^0 8 .* report'
+SA_CRON_MODE=crontab "$SA" cron --uninstall > /dev/null 2>&1
+t "crontab uninstall restores the original" cmp -s "$FAKE_DIR/crontab" "$TMP/ct.before"
+SA_CRONTAB_BIN="$TMP/bin/badcrontab" SA_CRON_MODE=crontab "$SA" cron --install > "$TMP/ctbad.out" 2>&1
+t "crontab -l failure aborts the install" has "$TMP/ctbad.out" "crontab -l failed"
 
 echo "== cron / help"
 "$SA" cron > "$TMP/cron.out" 2>&1
