@@ -96,8 +96,9 @@ cp -R ~/AgiAgentKit/demo-app ~/demo-library && cd ~/demo-library && git init -q 
 ~/AgiAgentKit/bin/superadvisor up ~/demo-library
 ```
 
-Watch the lanes with `superadvisor status`. Flag stuck ones with `superadvisor patrol`. End the day with
-`superadvisor report`. To compare runs with and without the leader, see [bench/README.md](bench/README.md).
+Watch the lanes with `superadvisor status`. Flag stuck ones with `superadvisor patrol`, and close merged idle ones
+with `superadvisor patrol --clean --apply`. End the day with `superadvisor review` and start it with
+`superadvisor report`; `superadvisor cron --install` schedules all three. To compare runs with and without the leader, see [bench/README.md](bench/README.md).
 
 ## Good to know
 

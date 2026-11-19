@@ -56,6 +56,7 @@ sonnet; chỉ đặt opus khi thẻ thật sự cần phán đoán.
 - `superadvisor status`: BUSY (đang làm), IDLE (xong hoặc đợi bạn), WAITING (chờ duyệt quyền), DEAD (session chết).
 - `superadvisor patrol`: ghi nhật ký và in `KẸT: <lane> ...` khi chờ quyền > 5 phút hoặc không đổi > 20 phút.
 - Lane IDLE: kiểm PR/test của nó rồi đóng (`lane close <tên>`) hoặc giao việc tiếp bằng thẻ mới.
+- `superadvisor patrol --clean`: lists lanes idle for `idle_close_min`, merged (squash too), clean and pushed; add `--apply` to close them. The cron patrol runs it with `--apply`.
 
 ### 5. Gỡ kẹt
 
@@ -82,6 +83,7 @@ Cần anh: <việc cần duyệt, kèm lệnh copy được>
 
 Ghi rõ cái gì đã chạy, cái gì chỉ đọc code, cái gì chưa chạy. Không báo khi không có gì mới.
 `superadvisor report` cho bản tóm tắt trong ngày (lane, cờ kẹt, commit, chi phí).
+`superadvisor review` writes the nightly review (open PRs, lanes, today's stuck flags, commits) to `brains/.local/reviews/`.
 
 ## Kỷ luật
 
