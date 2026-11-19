@@ -1,0 +1,621 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>Superadvisor Lesson</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Interactive step-by-step lesson: how Session Superadvisor (AgiAgentKit) lets one person run many Claude Code sessions.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #efebe2; --bg-2: #e5e0d4; --surface: #fbf9f4; --surface-2: #f4f1ea;
+  --ink: #1a1e23; --ink-2: #464e58; --muted: #7a8089; --line: #d6cfc0; --line-2: #bfb7a6;
+  --ground: #ddd6c6; --ground-edge: #b9b09d; --grid: #cfc7b5;
+  --n-leader: #2f6f8f; --n-lane: #8794a2; --n-slab: #d1c6ad; --n-brains: #7656a3;
+  --n-metrics: #2a8768; --n-pr: #3d424a; --n-owner: #c4612c; --n-gate: #d29a22; --n-island: #cbd5cf;
+  --t-haiku: #2fa38b; --t-sonnet: #4a6bd0; --t-opus: #c8433a;
+  --p-brief: #2b7bd0; --p-pr: #2a9a5f; --p-approval: #c4612c; --p-blocked: #d8352a; --p-prompt: #c9a01e; --p-metric: #7656a3;
+  --accent: #c4612c; --good: #23825a; --bad: #c2392f;
+  --shadow: 0 1px 0 rgba(30,25,15,.04), 0 6px 24px -12px rgba(30,25,15,.25);
+  --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --sans: "Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1215; --bg-2: #151a1e; --surface: #171c21; --surface-2: #1c2227;
+    --ink: #e8e5dd; --ink-2: #b4b8bd; --muted: #858c94; --line: #2a3138; --line-2: #3a434c;
+    --ground: #232a30; --ground-edge: #171c20; --grid: #2d353c;
+    --n-leader: #3f8bb0; --n-lane: #5f6d7b; --n-slab: #3a4550; --n-brains: #8a6cc0;
+    --n-metrics: #2f9c78; --n-pr: #8d95a2; --n-owner: #dd7840; --n-gate: #e0ab35; --n-island: #2c3a36;
+    --t-haiku: #3cbca1; --t-sonnet: #6b88e6; --t-opus: #e05a4f;
+    --p-brief: #4b9cf0; --p-pr: #3dbb78; --p-approval: #ec8a50; --p-blocked: #ff5a4d; --p-prompt: #e6bf3a; --p-metric: #a487db;
+    --accent: #ec8a50; --good: #3dbb78; --bad: #ff6a5e;
+    --shadow: 0 1px 0 rgba(0,0,0,.3), 0 8px 28px -14px rgba(0,0,0,.8);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1215; --bg-2: #151a1e; --surface: #171c21; --surface-2: #1c2227;
+  --ink: #e8e5dd; --ink-2: #b4b8bd; --muted: #858c94; --line: #2a3138; --line-2: #3a434c;
+  --ground: #232a30; --ground-edge: #171c20; --grid: #2d353c;
+  --n-leader: #3f8bb0; --n-lane: #5f6d7b; --n-slab: #3a4550; --n-brains: #8a6cc0;
+  --n-metrics: #2f9c78; --n-pr: #8d95a2; --n-owner: #dd7840; --n-gate: #e0ab35; --n-island: #2c3a36;
+  --t-haiku: #3cbca1; --t-sonnet: #6b88e6; --t-opus: #e05a4f;
+  --p-brief: #4b9cf0; --p-pr: #3dbb78; --p-approval: #ec8a50; --p-blocked: #ff5a4d; --p-prompt: #e6bf3a; --p-metric: #a487db;
+  --accent: #ec8a50; --good: #3dbb78; --bad: #ff6a5e;
+  --shadow: 0 1px 0 rgba(0,0,0,.3), 0 8px 28px -14px rgba(0,0,0,.8);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 16px; line-height: 1.5; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+.wrap { max-width: 1240px; margin: 0 auto; padding: 20px 16px 48px; }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+code, .mono { font-family: var(--mono); font-size: .86em; }
+code { background: var(--surface-2); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; overflow-wrap: anywhere; }
+
+/* header */
+.top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.crumb { font-family: var(--mono); font-size: 12px; color: var(--muted); letter-spacing: .02em; }
+.crumb b { color: var(--ink-2); font-weight: 500; }
+h1 { font-size: clamp(26px, 4.2vw, 40px); line-height: 1.08; margin: 6px 0 10px; letter-spacing: -.02em; font-weight: 700; }
+h1 em { font-style: normal; color: var(--accent); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.chip { font-family: var(--mono); font-size: 12px; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--line-2); color: var(--ink-2); background: var(--surface); }
+.question { margin: 0; font-size: 18px; color: var(--ink-2); max-width: 60ch; }
+.theme-btn { flex: none; border: 1px solid var(--line-2); background: var(--surface); border-radius: 8px; padding: 6px 10px; font-family: var(--mono); font-size: 12px; cursor: pointer; }
+
+/* metrics */
+.metrics { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; margin: 22px 0 14px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; box-shadow: var(--shadow); min-width: 0; transition: border-color .4s; }
+.card.changed { border-color: var(--accent); }
+.card .k { font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card .v { font-size: 26px; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; line-height: 1.2; }
+.card .d { font-family: var(--mono); font-size: 11px; color: var(--muted); min-height: 1.4em; }
+.card .d.up-bad, .card .d.down-bad { color: var(--bad); }
+.card .d.up-good, .card .d.down-good { color: var(--good); }
+
+/* stage */
+.stage { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 14px; align-items: start; }
+.diagram { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); padding: 8px 8px 4px; min-width: 0; }
+#scene { display: block; width: 100%; height: auto; }
+.legend svg { flex: none; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 6px 8px 8px; border-top: 1px dashed var(--line); font-family: var(--mono); font-size: 11.5px; color: var(--ink-2); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); padding: 16px 18px; min-width: 0; }
+.panel .num { font-family: var(--mono); font-size: 12px; color: var(--accent); letter-spacing: .04em; }
+.panel h2 { font-size: 22px; line-height: 1.2; margin: 4px 0 10px; letter-spacing: -.01em; }
+.panel p { margin: 0 0 10px; color: var(--ink-2); font-size: 15px; }
+.panel h3 { font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 14px 0 6px; font-weight: 500; }
+.panel ul { margin: 0; padding-left: 18px; font-size: 14.5px; }
+.panel li { margin: 3px 0; }
+.panel li::marker { color: var(--accent); }
+.extra { margin-top: 12px; }
+.bars { display: grid; gap: 5px; font-family: var(--mono); font-size: 11.5px; }
+.bar { display: grid; grid-template-columns: 96px 1fr 36px; gap: 8px; align-items: center; }
+.bar i { display: block; height: 9px; border-radius: 3px; background: var(--c, var(--accent)); }
+.tiers { display: grid; gap: 4px; font-size: 13.5px; }
+.tiers div { display: flex; gap: 8px; align-items: center; }
+.sw { width: 11px; height: 11px; border-radius: 2px; flex: none; background: var(--c); }
+
+/* timeline */
+.timeline { margin-top: 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 12px; box-shadow: var(--shadow); }
+.controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 10px; }
+.ctl { border: 1px solid var(--line-2); background: var(--surface-2); border-radius: 8px; padding: 6px 12px; cursor: pointer; font-family: var(--mono); font-size: 13px; min-height: 36px; }
+.ctl:hover { border-color: var(--ink-2); }
+.ctl.primary { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.ctl:disabled { opacity: .4; cursor: default; }
+.prog { flex: 1 1 120px; height: 4px; background: var(--bg-2); border-radius: 4px; overflow: hidden; min-width: 80px; }
+.prog i { display: block; height: 100%; width: 0; background: var(--accent); }
+.hint { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+.steps { list-style: none; display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; }
+.steps button { border: 1px solid var(--line); background: transparent; border-radius: 8px; padding: 5px 9px; cursor: pointer; font-size: 13px; display: inline-flex; gap: 6px; align-items: baseline; }
+.steps button b { font-family: var(--mono); font-size: 11px; color: var(--muted); font-weight: 500; }
+.steps button.done { border-color: var(--line-2); }
+.steps button[aria-current="step"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+.steps button[aria-current="step"] b { color: #fff; }
+.foot { margin-top: 14px; font-size: 12.5px; color: var(--muted); }
+
+/* svg */
+.lbl { font-family: var(--mono); font-size: 13px; font-weight: 700; fill: var(--ink); paint-order: stroke; stroke: var(--surface); stroke-width: 4px; stroke-linejoin: round; }
+.lbl.sm { font-size: 11.5px; font-weight: 500; fill: var(--ink-2); }
+.edge { fill: none; stroke: var(--line-2); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.edge.dash { stroke-dasharray: 2 6; }
+.edge.hot { stroke: var(--accent); }
+[data-node] { transition: opacity .5s ease, filter .5s ease; }
+.off { opacity: 0; pointer-events: none; }
+.ghost { opacity: .2; }
+g.hot { filter: drop-shadow(0 0 5px var(--accent)); }
+.co rect { fill: var(--ink); }
+.co text { font-family: var(--mono); font-size: 12px; fill: var(--bg); }
+.co line { stroke: var(--ink); stroke-width: 1.2; }
+.co.warn rect { fill: var(--p-blocked); } .co.warn text { fill: #fff; } .co.warn line { stroke: var(--p-blocked); }
+.co.phone rect { fill: var(--n-owner); } .co.phone text { fill: #fff; font-weight: 700; } .co.phone line { stroke: var(--n-owner); }
+.co { animation: pop .35s ease both; }
+@keyframes pop { from { transform: translateY(4px); } to { transform: none; } }
+.ring { fill: none; stroke: var(--p-blocked); stroke-width: 2.5; animation: pulse 1.4s ease-in-out infinite; }
+@keyframes pulse { 50% { stroke-opacity: .25; } }
+.pkt.hit .x { opacity: 1; }
+.pkt .x { opacity: 0; transition: opacity .15s; }
+
+@media (max-width: 1000px) {
+  .stage { grid-template-columns: 1fr; }
+  .metrics { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+}
+@media (max-width: 520px) {
+  .wrap { padding: 14px 16px 36px; }
+  .card .v { font-size: 22px; }
+  .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .panel { padding: 14px; }
+  .question { font-size: 16px; }
+  .hint { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="top">
+      <div class="crumb"><b>AgiAgentKit</b> / Lesson</div>
+      <button class="theme-btn" id="themeBtn" type="button" aria-label="Toggle colour theme">theme: auto</button>
+    </div>
+    <h1>Session <em>Superadvisor</em>, step by step</h1>
+    <div class="chips"><span class="chip">≈8 min</span><span class="chip">Beginner</span><span class="chip" id="chipSteps">10 steps</span><span class="chip">Claude Code · tmux · git worktrees</span></div>
+    <p class="question">One person, many Claude sessions: who watches them?</p>
+  </header>
+
+  <section class="metrics" aria-label="Metrics for the current step (illustrative)" id="metrics"></section>
+
+  <section class="stage">
+    <figure class="diagram" style="margin:0">
+      <svg id="scene" viewBox="10 56 985 556" role="img" aria-labelledby="sceneTitle">
+        <title id="sceneTitle">Isometric diagram of the owner, leader session, lane sessions, hooks, brains, metrics and GitHub PR</title>
+        <defs></defs>
+        <g id="layer-ground"></g><g id="layer-edges"></g><g id="layer-nodes"></g><g id="layer-pkts"></g><g id="layer-co"></g>
+      </svg>
+      <figcaption class="legend" id="legend"></figcaption>
+    </figure>
+    <article class="panel" id="panel" aria-live="polite"></article>
+  </section>
+
+  <nav class="timeline" aria-label="Lesson steps">
+    <div class="controls">
+      <button class="ctl" id="prev" type="button" aria-label="Previous step">← Back</button>
+      <button class="ctl primary" id="next" type="button" aria-label="Next step">Next →</button>
+      <button class="ctl" id="play" type="button" aria-pressed="false">▶ Play</button>
+      <button class="ctl" id="replay" type="button">↺ Replay</button>
+      <div class="prog" aria-hidden="true"><i id="progBar"></i></div>
+      <span class="hint">← → keys · Home / End</span>
+    </div>
+    <ol class="steps" id="steps"></ol>
+  </nav>
+
+  <p class="foot">All metric values are <b>illustrative</b>: plausible numbers to show the direction of each change, not measurements. Facts about commands, hooks and thresholds come from the AgiAgentKit repo (README, docs/architecture.md, docs/reference.md, the <code>lead</code> skill, <code>bin/superadvisor</code>, <code>plugin/hooks/</code>, <code>template/brains/config.json</code>). Costs in the real scorecard are estimates from a price table, not a bill.</p>
+</div>
+
+<script>
+(() => {
+"use strict";
+/* ------------------------------------------------------------------ iso helpers */
+const NS = "http://www.w3.org/2000/svg";
+const C30 = Math.cos(Math.PI / 6);           // 0.866
+const ISO = { ox: 520, oy: 80, k: 1 };        // screen origin of world (0,0,0), scale
+/** world (x,y,z) -> screen [sx, sy]; x runs down-right, y runs down-left, z up */
+function iso(x, y, z = 0) { return [ISO.ox + (x - y) * C30 * ISO.k, ISO.oy + ((x + y) * 0.5 - z) * ISO.k]; }
+const pts = (arr) => arr.map(p => p[0].toFixed(1) + "," + p[1].toFixed(1)).join(" ");
+function el(tag, attrs, parent) {
+  const n = document.createElementNS(NS, tag);
+  for (const k in attrs || {}) if (attrs[k] != null) n.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(n);
+  return n;
+}
+/** darken a CSS colour (var() allowed) by pct using color-mix */
+const shade = (c, pct) => pct <= 0 ? c : `color-mix(in oklab, ${c} ${100 - pct}%, #000)`;
+const poly = (parent, P, fill, extra = {}) => el("polygon", Object.assign({ points: pts(P), style: `fill:${fill}` }, extra), parent);
+
+/** isoBox: axis-aligned box; draws the 3 visible faces (top, +y face = left, +x face = right) */
+function isoBox(parent, { x, y, z = 0, w, d, h, color, stroke = "none", cls = "" }) {
+  const g = el("g", { class: "isobox " + cls }, parent);
+  const s = { stroke, "stroke-width": stroke === "none" ? null : 1, "stroke-linejoin": "round" };
+  poly(g, [iso(x, y + d, z), iso(x + w, y + d, z), iso(x + w, y + d, z + h), iso(x, y + d, z + h)], shade(color, 26), s);
+  poly(g, [iso(x + w, y + d, z), iso(x + w, y, z), iso(x + w, y, z + h), iso(x + w, y + d, z + h)], shade(color, 14), s);
+  poly(g, [iso(x, y, z + h), iso(x + w, y, z + h), iso(x + w, y + d, z + h), iso(x, y + d, z + h)], color, s);
+  return g;
+}
+/** slab: flat platform (thin box) with an optional dashed inset outline on top */
+function slab(parent, { x, y, z = 0, w, d, h = 8, color, dashed = false, cls = "" }) {
+  const g = isoBox(parent, { x, y, z, w, d, h, color, cls: "slab " + cls });
+  if (dashed) {
+    const i = 6, t = z + h;
+    poly(g, [iso(x + i, y + i, t), iso(x + w - i, y + i, t), iso(x + w - i, y + d - i, t), iso(x + i, y + d - i, t)], "none",
+      { stroke: "var(--ink-2)", "stroke-opacity": .45, "stroke-dasharray": "4 4", "stroke-width": 1.2 });
+  }
+  return g;
+}
+/** hexPrism: regular hexagon footprint (radius r) extruded by h; only faces whose normal faces the viewer (+x+y) */
+function hexPrism(parent, { cx, cy, z = 0, r, h, color, cls = "" }) {
+  const g = el("g", { class: "hex " + cls }, parent);
+  const v = [...Array(6)].map((_, i) => { const a = Math.PI / 3 * i + Math.PI / 6; return [cx + r * Math.cos(a), cy + r * Math.sin(a)]; });
+  for (let i = 0; i < 6; i++) {
+    const a = v[i], b = v[(i + 1) % 6];
+    const nx = (a[0] + b[0]) / 2 - cx, ny = (a[1] + b[1]) / 2 - cy;
+    if (nx + ny <= 0.01) continue;                       // back face
+    const amt = Math.round(20 + 12 * (ny - nx) / r);     // +y faces darker than +x faces
+    poly(g, [iso(a[0], a[1], z), iso(b[0], b[1], z), iso(b[0], b[1], z + h), iso(a[0], a[1], z + h)], shade(color, amt));
+  }
+  poly(g, v.map(p => iso(p[0], p[1], z + h)), color);
+  return g;
+}
+/** cylinder: circle footprint radius r projects to an axis-aligned ellipse rx=r*√2*cos30, ry=r*√2*sin30 */
+function cylinder(parent, { cx, cy, z = 0, r, h, color, rings = 0, cls = "" }) {
+  const g = el("g", { class: "cyl " + cls }, parent);
+  const rx = r * Math.SQRT2 * C30 * ISO.k, ry = r * Math.SQRT2 * 0.5 * ISO.k;
+  const [bx, by] = iso(cx, cy, z), [, ty] = iso(cx, cy, z + h);
+  el("path", { d: `M${bx - rx},${ty} L${bx - rx},${by} A${rx},${ry} 0 0 0 ${bx + rx},${by} L${bx + rx},${ty} Z`, style: `fill:${shade(color, 22)}` }, g);
+  for (let i = 1; i <= rings; i++) {
+    const ry2 = by - (by - ty) * i / (rings + 1);
+    el("path", { d: `M${bx - rx},${ry2} A${rx},${ry} 0 0 0 ${bx + rx},${ry2}`, fill: "none", style: `stroke:${shade(color, 40)}`, "stroke-width": 1.4 }, g);
+  }
+  el("ellipse", { cx: bx, cy: ty, rx, ry, style: `fill:${color}` }, g);
+  el("ellipse", { cx: bx, cy: ty, rx: rx * .62, ry: ry * .62, fill: "none", style: `stroke:${shade(color, 18)}`, "stroke-width": 1.2 }, g);
+  return g;
+}
+/** person: little standing figure at world point; phone=true adds a glowing phone in hand */
+function person(parent, { x, y, z = 0, color, phone = false, cls = "" }) {
+  const g = el("g", { class: "person " + cls }, parent);
+  const [px, py] = iso(x, y, z);
+  el("ellipse", { cx: px, cy: py + 1, rx: 11, ry: 5, fill: "#000", "fill-opacity": .16 }, g);
+  el("path", { d: `M${px - 8},${py} Q${px - 9},${py - 22} ${px},${py - 23} Q${px + 9},${py - 22} ${px + 8},${py} Z`, style: `fill:${color}` }, g);
+  el("circle", { cx: px, cy: py - 31, r: 7, style: `fill:${shade(color, 30)}` }, g);
+  if (phone) {
+    el("rect", { x: px + 6, y: py - 22, width: 8, height: 13, rx: 2, transform: `rotate(-14 ${px + 10} ${py - 15})`, style: "fill:var(--ink)" }, g);
+    el("rect", { x: px + 7.3, y: py - 20.5, width: 5.4, height: 8.5, rx: 1, transform: `rotate(-14 ${px + 10} ${py - 15})`, style: "fill:var(--p-brief)" }, g);
+  }
+  return g;
+}
+/** gate: hook checkpoint straddling an edge that runs along the x axis at (x, y) */
+function gate(parent, { x, y, color, cls = "" }) {
+  const g = el("g", { class: "gate " + cls }, parent);
+  isoBox(g, { x: x - 3, y: y - 17, w: 6, d: 6, h: 26, color }, g);
+  isoBox(g, { x: x - 3, y: y + 11, w: 6, d: 6, h: 26, color }, g);
+  isoBox(g, { x: x - 3, y: y - 17, z: 26, w: 6, d: 34, h: 6, color }, g);
+  const [sx, sy] = iso(x + 3, y, 36);
+  el("path", { d: `M${sx},${sy - 15} l8,3 v6 c0,5 -4,8 -8,10 c-4,-2 -8,-5 -8,-10 v-6 Z`, style: `fill:${color};stroke:var(--surface)`, "stroke-width": 1.5 }, g);
+  return g;
+}
+/** edge: polyline through world points at height z; returns the <path> so packets can sample it */
+function edge(parent, id, points, { z = 1, dash = false } = {}) {
+  const d = "M" + points.map(p => iso(p[0], p[1], z).map(n => n.toFixed(1)).join(",")).join(" L");
+  return el("path", { d, class: "edge" + (dash ? " dash" : ""), "data-node": id, id: "e-" + id }, parent);
+}
+function label(parent, at, text, cls = "lbl", anchor = "middle", dy = 0) {
+  const [sx, sy] = iso(...at);
+  const t = el("text", { x: sx, y: sy + dy, class: cls, "text-anchor": anchor }, parent);
+  t.textContent = text; return t;
+}
+/** callout: dark tag above a world point, with a short leader line; sized from getBBox */
+function callout(parent, at, text, kind = "", dx = 0, rise = 34) {
+  const [sx, sy] = iso(...at);
+  const g = el("g", { class: "co " + kind }, parent);
+  const line = el("line", { x1: sx, y1: sy, x2: sx + dx, y2: sy - rise }, g);
+  const t = el("text", { x: sx + dx, y: sy - rise - 8, "text-anchor": "middle" }, g);
+  t.textContent = text;
+  const bb = t.getBBox();
+  let left = bb.x - 8; const W = bb.width + 16;
+  const shift = Math.max(6 - left, 0) - Math.max(left + W - 994, 0);   // keep inside viewBox
+  left += shift; t.setAttribute("x", sx + dx + shift);
+  const r = el("rect", { x: left, y: bb.y - 4, width: W, height: bb.height + 8, rx: 6 }, g);
+  g.insertBefore(r, t); line.setAttribute("x2", sx + dx + shift);
+  return g;
+}
+
+/* ------------------------------------------------------------------ scene */
+const svg = document.getElementById("scene");
+const L = { ground: svg.querySelector("#layer-ground"), edges: svg.querySelector("#layer-edges"), nodes: svg.querySelector("#layer-nodes"), pkts: svg.querySelector("#layer-pkts"), co: svg.querySelector("#layer-co") };
+const LANE_Y = [16, 113, 210, 307, 404], LANE_D = 72, LANE_X = 395, LANE_W = 80;
+const laneC = (i) => LANE_Y[i] + LANE_D / 2;
+const BUS_X = 335, GATE_X = 366;
+const TIERS = [["haiku", "sonnet"], ["haiku", "sonnet", "sonnet"], ["haiku", "sonnet", "opus"], ["haiku", "opus"], ["haiku", "sonnet"]];
+const node = (id, parent = L.nodes) => el("g", { "data-node": id }, parent);
+
+function buildScene() {
+  // ground platform + faint grid
+  slab(L.ground, { x: 0, y: 0, z: -14, w: 500, d: 500, h: 14, color: "var(--ground)" });
+  const grid = el("g", { "stroke-width": 1, style: "stroke:var(--grid)" }, L.ground);
+  for (let i = 50; i < 500; i += 50) {
+    el("line", { x1: iso(i, 0)[0], y1: iso(i, 0)[1], x2: iso(i, 500)[0], y2: iso(i, 500)[1] }, grid);
+    el("line", { x1: iso(0, i)[0], y1: iso(0, i)[1], x2: iso(500, i)[0], y2: iso(500, i)[1] }, grid);
+  }
+  // owner island
+  const isl = node("island", L.ground);
+  slab(isl, { x: -160, y: 290, z: -6, w: 90, d: 90, h: 10, color: "var(--n-island)" });
+  label(isl, [-160, 380, -6], "phone · Remote Control", "lbl sm", "start", 26);
+
+  // edges
+  for (let i = 0; i < 5; i++) edge(L.edges, "d" + (i + 1), [[-80, 335], [LANE_X, laneC(i)]], { dash: true });
+  edge(L.edges, "rc", [[-80, 330], [200, 262]], { dash: true });
+  edge(L.edges, "eBrains", [[95, 144], [95, 250], [196, 250]]);
+  edge(L.edges, "ePR", [[240, 206], [240, 92]]);
+  edge(L.edges, "eMet", [[240, 294], [240, 420], [182, 420]]);
+  edge(L.edges, "eMetL", [[BUS_X, laneC(4)], [BUS_X, 478], [150, 478], [150, 452]]);
+  for (let i = 0; i < 5; i++) edge(L.edges, "b" + (i + 1), [[284, 250], [BUS_X, 250], [BUS_X, laneC(i)], [LANE_X, laneC(i)]]);
+
+  // nodes, painted back-to-front (x+y ascending)
+  const items = [];
+  items.push([110 + 110, () => { const g = node("brains"); cylinder(g, { cx: 95, cy: 110, r: 34, h: 50, color: "var(--n-brains)", rings: 2 }); label(g, [95, 110, 50], "brains/", "lbl", "middle", -46); label(g, [95, 110, 50], "lead.md · decisions.md · inbox/", "lbl sm", "middle", -32); }]);
+  items.push([240 + 60, () => { const g = node("pr"); isoBox(g, { x: 205, y: 34, w: 70, d: 56, h: 30, color: "var(--n-pr)" }); isoBox(g, { x: 222, y: 48, z: 30, w: 36, d: 28, h: 8, color: "var(--p-pr)" }); label(g, [240, 62, 38], "GitHub PR", "lbl", "middle", -22); }]);
+  items.push([490, () => { const g = node("leader"); hexPrism(g, { cx: 240, cy: 250, r: 46, h: 56, color: "var(--n-leader)" }); hexPrism(g, { cx: 240, cy: 250, z: 56, r: 22, h: 10, color: shade("var(--n-leader)", -0) }); label(g, [240, 250, 66], "LEADER", "lbl", "middle", -36); label(g, [240, 250, 66], "PROJ-LEAD · tmux -L sa", "lbl sm", "middle", -22); }]);
+  items.push([570, () => { const g = node("metrics"); cylinder(g, { cx: 150, cy: 420, r: 30, h: 36, color: "var(--n-metrics)", rings: 1 }); label(g, [150, 420, 36], ".claude/metrics", "lbl", "middle", -26); label(g, [150, 420, 36], "events.jsonl", "lbl sm", "middle", -12); }]);
+  for (let i = 0; i < 5; i++) {
+    const y = LANE_Y[i];
+    items.push([LANE_X + y + 1, () => {
+      const g = node("lane" + (i + 1));
+      slab(g, { x: LANE_X, y, w: LANE_W, d: LANE_D, h: 7, color: "var(--n-slab)", dashed: true });
+      isoBox(g, { x: LANE_X + 16, y: y + 14, z: 7, w: 46, d: 44, h: 30, color: "var(--n-lane)" });
+      const [sx, sy] = iso(LANE_X + 39, y + 36, 37);                       // screen glyph on top: ">_"
+      el("text", { x: sx, y: sy + 4, "text-anchor": "middle", class: "mono", style: "font-size:11px;font-weight:700;fill:var(--surface)" }, g).textContent = ">_";
+      label(g, [LANE_X + LANE_W, y + LANE_D / 2, 0], "lane/c" + (i + 1), "lbl", "start", 12).setAttribute("dx", 10);
+      const tg = node("tier" + (i + 1), g);
+      TIERS[i].forEach((t, j) => isoBox(tg, { x: LANE_X + 20 + j * 13, y: y + 54, z: 37, w: 10, d: 10, h: 10, color: `var(--t-${t})` }));
+      const sg = node("stuck" + (i + 1), g);
+      const [cx, cy] = iso(LANE_X + LANE_W / 2, y + LANE_D / 2, 4);
+      el("ellipse", { cx, cy, rx: 82, ry: 46, class: "ring" }, sg);
+    }]);
+    items.push([GATE_X + laneC(i) + 2, () => { const g = node("gate" + (i + 1)); gate(g, { x: GATE_X, y: laneC(i), color: "var(--n-gate)" }); }]);
+  }
+  items.push([-1000, () => { const g = node("owner"); person(g, { x: -115, y: 335, z: 4, color: "var(--n-owner)", phone: true }); label(g, [-115, 335, 4], "OWNER", "lbl", "middle", -46); }]);
+  items.sort((a, b) => a[0] - b[0]).forEach(([, f]) => f());
+}
+
+/* ------------------------------------------------------------------ packets */
+const PKT = {
+  brief:    { c: "var(--p-brief)",    name: "brief (leader → lane)",  shape: "circle" },
+  pr:       { c: "var(--p-pr)",       name: "PR / report (lane → leader)", shape: "square" },
+  approval: { c: "var(--p-approval)", name: "owner message / approval", shape: "diamond" },
+  blocked:  { c: "var(--p-blocked)",  name: "blocked call (stopped at hook)", shape: "cross" },
+  prompt:   { c: "var(--p-prompt)",   name: "permission prompt", shape: "tri" },
+  metric:   { c: "var(--p-metric)",   name: "token row", shape: "dot" },
+};
+function shapeInto(g, type, s = 1) {
+  const c = PKT[type].c, st = `fill:${c};stroke:var(--surface);stroke-width:1.5`;
+  switch (PKT[type].shape) {
+    case "circle": el("circle", { r: 6 * s, style: st }, g); break;
+    case "square": el("rect", { x: -6 * s, y: -6 * s, width: 12 * s, height: 12 * s, rx: 2.5, style: st }, g); break;
+    case "diamond": el("rect", { x: -5.5 * s, y: -5.5 * s, width: 11 * s, height: 11 * s, transform: "rotate(45)", style: st }, g); break;
+    case "tri": el("path", { d: `M0,${-7 * s} L${7 * s},${5 * s} L${-7 * s},${5 * s} Z`, style: st }, g); break;
+    case "dot": el("circle", { r: 4.5 * s, style: st }, g); break;
+    case "cross": el("circle", { r: 6.5 * s, style: st }, g);
+      el("path", { d: `M${-3 * s},${-3 * s} L${3 * s},${3 * s} M${3 * s},${-3 * s} L${-3 * s},${3 * s}`, stroke: "#fff", "stroke-width": 2, "stroke-linecap": "round" }, g); break;
+  }
+}
+const reduceMQ = window.matchMedia("(prefers-reduced-motion: reduce)");
+let packets = [], raf = 0;
+/** spec: { e: edgeId, t: type, rev?: bool, stop?: px from start of travel, dur?: ms } */
+function setPackets(specs) {
+  L.pkts.replaceChildren(); packets = [];
+  specs.forEach((sp, i) => {
+    const path = document.getElementById("e-" + sp.e); if (!path) return;
+    const g = el("g", { class: "pkt" }, L.pkts);
+    shapeInto(g, sp.t);
+    if (sp.t === "blocked") { const x = el("g", { class: "x" }, g); el("circle", { r: 13, fill: "none", style: "stroke:var(--p-blocked)", "stroke-width": 2 }, x); }
+    packets.push({ g, path, len: path.getTotalLength(), rev: !!sp.rev, stop: sp.stop, dur: sp.dur || (sp.stop ? 2200 : 2800), off: (i * 0.37) % 1 });
+  });
+  cancelAnimationFrame(raf);
+  if (reduceMQ.matches) { place(0.55, true); } else raf = requestAnimationFrame(tick);
+}
+function place(now, staticMode) {
+  for (const p of packets) {
+    const t = staticMode ? now : ((now / p.dur) + p.off) % 1;
+    let dist;
+    if (p.stop != null) { dist = Math.min(t / 0.55, 1) * p.stop; p.g.classList.toggle("hit", staticMode || t > 0.55); }
+    else dist = t * p.len;
+    const s = p.rev ? p.len - dist : dist;
+    const pt = p.path.getPointAtLength(Math.max(0, Math.min(p.len, s)));
+    p.g.setAttribute("transform", `translate(${pt.x.toFixed(1)},${(pt.y - 5).toFixed(1)})`);
+  }
+}
+function tick(now) { place(now, false); raf = requestAnimationFrame(tick); }
+reduceMQ.addEventListener?.("change", () => setPackets(STEPS[cur].packets));
+
+/* ------------------------------------------------------------------ steps */
+const LANES = [1, 2, 3, 4, 5].map(i => "lane" + i), BUS = [1, 2, 3, 4, 5].map(i => "b" + i);
+const GATES = [1, 2, 3, 4, 5].map(i => "gate" + i), TIER = [1, 2, 3, 4, 5].map(i => "tier" + i);
+const CORE = ["island", "owner", "leader", "brains", "rc", "eBrains", ...LANES, ...BUS];
+const G = (i) => [GATE_X, laneC(i - 1), 32], LN = (i) => [LANE_X + 40, LANE_Y[i - 1] + 36, 40];
+const STEPS = [
+  { short: "The problem", title: "One human, five sessions, all asking",
+    body: ["You open five Claude Code sessions to move a backlog faster. Each one stops to ask: <i>allow this command?</i> <i>which file?</i> <i>is this done?</i>",
+      "You become the scheduler, the reviewer and the permission dialog for all five. Nobody notices when one of them has been stuck for twenty minutes."],
+    changes: ["5 sessions talk straight to you", "every prompt waits on one person", "no one tracks stuck or cost"],
+    m: { lanes: 5, stuck: 2, prompts: 38, tokens: 800, cost: 96 },
+    show: ["island", "owner", ...LANES, "d1", "d2", "d3", "d4", "d5"], hot: ["owner"],
+    packets: [1, 2, 3, 4, 5].map(i => ({ e: "d" + i, t: "prompt", rev: true })),
+    co: [[[-115, 335, 40], "5 terminals: \"Allow this?\"", "warn", 30], [LN(3), "who is stuck?", "", 0]] },
+  { short: "Add a leader", title: "Talk to one leader, not five sessions",
+    body: ["<code>superadvisor up</code> starts one Claude session, the <b>leader</b>, in tmux (socket <code>sa</code>, session <code>&lt;PROJ&gt;-LEAD</code>) with Remote Control and auto mode.",
+      "You talk only to the leader, from the terminal or your phone. It reads <code>brains/</code>: <code>lead.md</code> (what it may do alone), <code>decisions.md</code>, <code>directives/</code> and <code>inbox/</code>, so it does not ask twice."],
+    changes: ["direct owner↔session lines removed", "leader + brains/ added", "owner prompts drop sharply"],
+    m: { lanes: 5, stuck: null, prompts: 9, tokens: 70, cost: 90 },
+    show: CORE, hot: ["leader", "brains"],
+    packets: [{ e: "rc", t: "approval" }, ...BUS.map(e => ({ e, t: "brief" }))],
+    co: [[[240, 250, 70], "sizes cards S / M / L, writes briefs", "", 0, 52], [[-115, 335, 40], "\"Read BACKLOG.md, open C1 and C3\"", "phone", 40]] },
+  { short: "Lanes", title: "A lane = one card, one worktree, one PR",
+    body: ["The leader runs <code>superadvisor lane open &lt;name&gt; --brief &lt;file&gt;</code>. That creates a git worktree on branch <code>lane/&lt;name&gt;</code> and a tmux session with <code>KIT_LANE=1</code>; the brief is copied to <code>brains/.local/briefs/</code>.",
+      "Because each card has its own worktree, parallel lanes never touch each other's files, and every PR can be reviewed on its own. The lane reports back to the leader, not to you."],
+    changes: ["each lane sits on its own worktree slab", "PRs flow lane → leader", "GitHub PR node appears"],
+    m: { lanes: 5, stuck: null, prompts: 7, tokens: 58, cost: 82 },
+    show: [...CORE, "pr", "ePR"], hot: [...LANES],
+    packets: [{ e: "b1", t: "pr", rev: true }, { e: "b2", t: "brief" }, { e: "b3", t: "pr", rev: true }, { e: "b4", t: "brief" }, { e: "b5", t: "brief" }, { e: "rc", t: "approval" }],
+    co: [[LN(2), "worktree lane/c2 · KIT_LANE=1", "", -40], [LN(4), "1 card = 1 worktree = 1 PR", "", -40]] },
+  { short: "Model tiers", title: "Cheap models read, mid models write, strong models judge",
+    body: ["Inside a lane, work goes to five agents, each pinned to a model in its frontmatter: <code>scout</code> on Haiku for read-only lookups; <code>builder</code> and <code>tester</code> on Sonnet; <code>debugger</code> and <code>reviewer</code> on Opus.",
+      "Most calls are reads, so most go to the cheapest tier. The leader can pin a lane's main model with <code>--model</code> (usually Sonnet) and picks Opus only when a card needs judgement."],
+    changes: ["coloured cubes = subagents used per lane", "Opus only on lanes 3 (review) and 4 (debug)", "cost/day falls"],
+    m: { lanes: 5, stuck: null, prompts: 7, tokens: 58, cost: 61 },
+    show: [...CORE, "pr", "ePR", ...TIER], hot: [...TIER],
+    extra: `<div class="tiers"><div><i class="sw" style="--c:var(--t-haiku)"></i><span><code>scout</code> · Haiku · find files, symbols, call sites</span></div><div><i class="sw" style="--c:var(--t-sonnet)"></i><span><code>builder</code> / <code>tester</code> · Sonnet · known-cause changes in 1–5 files, tests</span></div><div><i class="sw" style="--c:var(--t-opus)"></i><span><code>debugger</code> / <code>reviewer</code> · Opus · unknown root cause, one review before a PR</span></div></div>`,
+    packets: [{ e: "b1", t: "brief" }, { e: "b3", t: "pr", rev: true }, { e: "b4", t: "brief" }],
+    co: [[LN(3), "reviewer · opus", "", -30], [LN(4), "debugger · opus", "", -30], [LN(1), "scout → builder", "", -30]] },
+  { short: "Hooks", title: "Hooks stop the habits that burn tokens",
+    body: ["Hooks run inside every session on each tool call. <code>turn-guard</code> counts a builder/tester run: it warns at 60 and 90 calls and blocks Edit/Write/Bash from 130 (Read and Grep still pass so it can summarise).",
+      "<code>test-budget</code> denies whole-suite runs like a bare <code>npm test</code>; name a file or filter instead. <code>agent-routing</code> denies Agent calls that pass <code>model</code> or use general-purpose. In auto mode a hook denies with guidance; in other modes it asks."],
+    changes: ["a gate appears on every lane edge", "red calls stop at the gate and turn back", "they save tokens; they are not a security boundary (no jq = pass)"],
+    m: { lanes: 5, stuck: null, prompts: 4, tokens: 52, cost: 49 },
+    show: [...CORE, "pr", "ePR", ...TIER, ...GATES], hot: [...GATES],
+    packets: [{ e: "b2", t: "blocked", rev: true, stop: 24 }, { e: "b4", t: "blocked", rev: true, stop: 24 }, { e: "b1", t: "brief" }, { e: "b5", t: "pr", rev: true }],
+    co: [[G(2), "test-budget: npm test ✕", "warn", -60], [G(4), "agent-routing: model= ✕", "warn", -60], [LN(1), "turn-guard 60 · 90 warn · 130 block", "", -60]] },
+  { short: "Owner-guard", title: "Lanes cannot do the owner's job",
+    body: ["<code>owner-guard</code> only acts when <code>KIT_LANE=1</code>, and it always denies, because a lane has nobody to ask.",
+      "It blocks <code>gh pr merge</code>, a push naming <code>main</code>, <code>master</code> or <code>dev</code>, and writes to <code>.claude/settings*.json</code>. The lane reports to the leader instead."],
+    changes: ["lane 3 tries to merge its own PR → denied", "the report goes to the leader instead", "merge stays an owner decision"],
+    m: { lanes: 5, stuck: null, prompts: 3, tokens: 52, cost: 48 },
+    show: [...CORE, "pr", "ePR", ...TIER, ...GATES], hot: ["gate3", "lane3"],
+    packets: [{ e: "b3", t: "blocked", rev: true, stop: 24 }, { e: "b3", t: "pr", rev: true, dur: 3400 }, { e: "b1", t: "brief" }],
+    co: [[G(3), "owner-guard: gh pr merge → deny", "warn", -70]] },
+  { short: "Patrol", title: "Patrol flags the stuck lane; the leader narrows the brief",
+    body: ["<code>superadvisor patrol</code> reads each tmux pane as BUSY, IDLE, WAITING or DEAD and compares minutes without change against <code>brains/config.json</code>: <code>waiting_min: 5</code>, <code>stuck_min: 20</code>. Flags go to <code>brains/.local/patrol.log</code>.",
+      "For a stuck lane the leader runs <code>lane close</code>, writes a narrower brief (one purpose, a clear file list) and reopens the same name; the worktree and branch are reused. Stuck twice: stop and tell the owner, maybe hand it to <code>debugger</code>."],
+    changes: ["lane 5 flagged: unchanged 23 min > 20", "new, narrower brief sent to lane 5", "stuck is now measured, not guessed"],
+    m: { lanes: 5, stuck: 1, prompts: 3, tokens: 55, cost: 47 },
+    show: [...CORE, "pr", "ePR", ...TIER, ...GATES, "stuck5"], hot: ["lane5", "brains"],
+    packets: [{ e: "b5", t: "brief", dur: 2000 }, { e: "b2", t: "pr", rev: true }],
+    co: [[LN(5), "STUCK: unchanged 23m (stuck_min 20)", "warn", -70, 50], [[95, 110, 30], "config.json · patrol.log", "", 170, 24]] },
+  { short: "Merge from phone", title: "Owner types \"M 42\" and the lane closes",
+    body: ["The leader tells you a PR is ready, in at most five lines. You reply <code>M 42</code> on your phone.",
+      "The leader merges only within <code>brains/lead.md</code> rules: tests green on the exact approved HEAD, no High/Critical findings after at most two review rounds; if HEAD changed, it asks again. Then <code>lane close c1 --rm-worktree</code> and one line in <code>decisions.md</code>."],
+    changes: ["approval: owner → leader", "merge: leader → GitHub PR", "lane 1 closed, worktree removed"],
+    m: { lanes: 4, stuck: 0, prompts: 2, tokens: 57, cost: 46 },
+    show: [...CORE.filter(n => n !== "b1"), "pr", "ePR", ...TIER, ...GATES], ghost: ["lane1", "tier1", "gate1"], hot: ["owner", "pr"],
+    packets: [{ e: "rc", t: "approval", dur: 2200 }, { e: "ePR", t: "pr", dur: 2200 }],
+    co: [[[-115, 335, 40], "M 42", "phone", 0], [[240, 62, 40], "squash merge · exact HEAD", "", 0, 40], [LN(1), "lane close c1 --rm-worktree", "", -50]] },
+  { short: "Metrics", title: "The main session is the biggest cost",
+    body: ["Two hooks only record. <code>metrics-subagent</code> writes a row per subagent run; <code>metrics-main</code> writes a row per model per <code>Stop</code> with <code>ctx_max</code>. Rows go to <code>.claude/metrics/events.jsonl</code> in the main checkout, so they survive worktree removal (token counts only, never prompt text).",
+      "<code>kit-stats.sh</code> turns them into <code>scorecard.md</code> / <code>.json</code>: cost per model, the main session, and a fit score per agent. The main session usually costs most because its context keeps growing, which is why the leader stays thin."],
+    changes: ["token rows flow to events.jsonl", "scorecard ranks the spend", "leader context is the line to watch"],
+    m: { lanes: 4, stuck: 0, prompts: 2, tokens: 57, cost: 46 },
+    show: [...CORE.filter(n => n !== "b1"), "pr", "ePR", ...TIER, ...GATES, "metrics", "eMet", "eMetL"], ghost: ["lane1", "tier1", "gate1"], hot: ["metrics", "leader"],
+    extra: `<h3>Scorecard share of cost (illustrative)</h3><div class="bars">${[["main session", 58, "var(--n-leader)"], ["builder", 16, "var(--t-sonnet)"], ["reviewer", 11, "var(--t-opus)"], ["debugger", 8, "var(--t-opus)"], ["tester", 4, "var(--t-sonnet)"], ["scout", 3, "var(--t-haiku)"]].map(([n, v, c]) => `<div class="bar"><span>${n}</span><i style="width:${v}%;--c:${c}"></i><span>${v}%</span></div>`).join("")}</div>`,
+    packets: [{ e: "eMet", t: "metric" }, { e: "eMetL", t: "metric", dur: 3200 }, { e: "b3", t: "pr", rev: true }],
+    co: [[[150, 420, 40], "kit-stats.sh → scorecard.md", "", -20, 46], [[240, 250, 70], "main: ctx_max keeps growing", "", 40, 50]] },
+  { short: "Recap", title: "Recap: you approve; the system watches",
+    body: ["You talk to one leader. The leader sizes cards, writes briefs and opens one lane per card, each in its own worktree with its own PR.",
+      "Agents are pinned to tiers, hooks stop token sinks and owner-only actions, patrol catches stuck lanes, and the scorecard shows where the money went. You approve merges, production and permissions; that is all."],
+    changes: ["owner: decisions only", "leader: coordinates, never codes heavy", "lanes: one card each, guarded by hooks"],
+    m: { lanes: 4, stuck: 0, prompts: 2, tokens: 57, cost: 46 },
+    show: [...CORE.filter(n => n !== "b1"), "pr", "ePR", ...TIER, ...GATES, "metrics", "eMet", "eMetL"], ghost: ["lane1", "tier1", "gate1"], hot: [],
+    packets: [{ e: "rc", t: "approval" }, { e: "b2", t: "brief" }, { e: "b3", t: "pr", rev: true }, { e: "b4", t: "blocked", rev: true, stop: 24 }, { e: "b5", t: "brief" }, { e: "eMet", t: "metric" }, { e: "ePR", t: "pr" }],
+    co: [] },
+];
+
+/* ------------------------------------------------------------------ metrics cards */
+const METRICS = [
+  { k: "lanes", label: "Lanes running", fmt: v => String(v), better: 0 },
+  { k: "stuck", label: "Stuck lanes", fmt: v => v == null ? "—" : String(v), better: -1, none: "not measured" },
+  { k: "prompts", label: "Owner prompts / h", fmt: v => String(v), better: -1 },
+  { k: "tokens", label: "Main-session tokens", fmt: v => v >= 1000 ? (v / 1000).toFixed(1) + "M" : v + "k", better: -1 },
+  { k: "cost", label: "Est. cost / day", fmt: v => "$" + v, better: -1 },
+];
+const mWrap = document.getElementById("metrics");
+mWrap.innerHTML = METRICS.map(m => `<div class="card" data-k="${m.k}"><div class="k">${m.label}</div><div class="v">–</div><div class="d"></div></div>`).join("");
+function renderMetrics(i) {
+  const now = STEPS[i].m, prev = i > 0 ? STEPS[i - 1].m : null;
+  for (const m of METRICS) {
+    const card = mWrap.querySelector(`[data-k="${m.k}"]`), v = now[m.k], p = prev ? prev[m.k] : undefined;
+    card.querySelector(".v").textContent = m.fmt(v);
+    const d = card.querySelector(".d"); d.className = "d"; card.classList.remove("changed");
+    if (v == null) d.textContent = m.none || "";
+    else if (i === 0 && m.k === "tokens") d.textContent = "5 sessions × 160k";
+    else if (p === null && i > 0) { d.textContent = "now measured by patrol"; card.classList.add("changed"); }
+    else if (p == null || p === v) d.textContent = i === 0 ? "baseline" : "no change";
+    else {
+      const up = v > p, diff = Math.abs(v - p);
+      d.textContent = (up ? "▲ " : "▼ ") + m.fmt(diff).replace(/^\$/, "$");
+      if (m.better) d.classList.add((up ? "up-" : "down-") + ((up ? 1 : -1) === m.better ? "good" : "bad"));
+      card.classList.add("changed");
+    }
+  }
+}
+
+/* ------------------------------------------------------------------ binding */
+let cur = 0, playing = false, timer = 0, progStart = 0, progRaf = 0;
+const STEP_MS = 7500;
+const panel = document.getElementById("panel"), stepsOl = document.getElementById("steps");
+stepsOl.innerHTML = STEPS.map((s, i) => `<li><button type="button" data-i="${i}"><b>${String(i + 1).padStart(2, "0")}</b>${s.short}</button></li>`).join("");
+document.getElementById("chipSteps").textContent = STEPS.length + " steps";
+document.getElementById("legend").innerHTML = Object.keys(PKT).map(t => {
+  const s = document.createElementNS(NS, "svg"); s.setAttribute("width", 16); s.setAttribute("height", 16); s.setAttribute("viewBox", "-8 -8 16 16"); s.setAttribute("aria-hidden", "true");
+  shapeInto(s, t, .95); return `<span>${s.outerHTML}${PKT[t].name}</span>`;
+}).join("") + `<span><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1l6 2.5v4.5c0 3.5-3 5.8-6 7-3-1.2-6-3.5-6-7V3.5z" style="fill:var(--n-gate)"/></svg>hook gate</span>`;
+
+function render(i, fromUser = false) {
+  cur = Math.max(0, Math.min(STEPS.length - 1, i));
+  const s = STEPS[cur], show = new Set(s.show), ghost = new Set(s.ghost || []), hot = new Set(s.hot || []);
+  svg.querySelectorAll("[data-node]").forEach(n => {
+    const id = n.dataset.node;
+    n.classList.toggle("off", !show.has(id) && !ghost.has(id));
+    n.classList.toggle("ghost", ghost.has(id));
+    n.classList.toggle("hot", hot.has(id));
+  });
+  // edges into hot nodes get the accent stroke
+  svg.querySelectorAll(".edge").forEach(e => e.classList.remove("hot"));
+  if (hot.has("owner")) svg.querySelector("#e-rc")?.classList.add("hot");
+  if (hot.has("pr")) svg.querySelector("#e-ePR")?.classList.add("hot");
+  if (hot.has("metrics")) { svg.querySelector("#e-eMet")?.classList.add("hot"); svg.querySelector("#e-eMetL")?.classList.add("hot"); }
+  setPackets(s.packets);
+  L.co.replaceChildren();
+  (s.co || []).forEach(([at, text, kind, dx, rise]) => callout(L.co, at, text, kind, dx || 0, rise || 34));
+  panel.innerHTML = `<div class="num">STEP ${String(cur + 1).padStart(2, "0")} / ${STEPS.length}</div><h2>${s.title}</h2>${s.body.map(p => `<p>${p}</p>`).join("")}<h3>What changed</h3><ul>${s.changes.map(c => `<li>${c}</li>`).join("")}</ul>${s.extra ? `<div class="extra">${s.extra}</div>` : ""}`;
+  renderMetrics(cur);
+  stepsOl.querySelectorAll("button").forEach((b, j) => { b.classList.toggle("done", j < cur); if (j === cur) b.setAttribute("aria-current", "step"); else b.removeAttribute("aria-current"); });
+  document.getElementById("prev").disabled = cur === 0;
+  document.getElementById("next").disabled = cur === STEPS.length - 1;
+  try { history.replaceState(null, "", "#step-" + (cur + 1)); } catch (e) { /* sandboxed */ }
+  if (fromUser && playing) restartTimer();
+}
+
+/* ------------------------------------------------------------------ playback */
+const playBtn = document.getElementById("play"), progBar = document.getElementById("progBar");
+function setPlaying(on) {
+  playing = on; playBtn.setAttribute("aria-pressed", String(on)); playBtn.textContent = on ? "❚❚ Pause" : "▶ Play";
+  clearTimeout(timer); cancelAnimationFrame(progRaf); progBar.style.width = "0";
+  if (on) restartTimer();
+}
+function restartTimer() {
+  clearTimeout(timer); cancelAnimationFrame(progRaf); progStart = performance.now();
+  const loop = (t) => { progBar.style.width = Math.min(100, (t - progStart) / STEP_MS * 100) + "%"; progRaf = requestAnimationFrame(loop); };
+  if (!reduceMQ.matches) progRaf = requestAnimationFrame(loop);
+  timer = setTimeout(() => { if (cur < STEPS.length - 1) { render(cur + 1); restartTimer(); } else setPlaying(false); }, STEP_MS);
+}
+document.getElementById("prev").addEventListener("click", () => render(cur - 1, true));
+document.getElementById("next").addEventListener("click", () => render(cur + 1, true));
+playBtn.addEventListener("click", () => { if (!playing && cur === STEPS.length - 1) render(0); setPlaying(!playing); });
+document.getElementById("replay").addEventListener("click", () => { render(0); setPlaying(true); });
+stepsOl.addEventListener("click", (e) => { const b = e.target.closest("button[data-i]"); if (b) render(+b.dataset.i, true); });
+document.addEventListener("keydown", (e) => {
+  if (e.target.closest && e.target.closest("input, textarea, select, [contenteditable]")) return;
+  if (e.altKey || e.ctrlKey || e.metaKey) return;
+  const map = { ArrowRight: cur + 1, ArrowLeft: cur - 1, Home: 0, End: STEPS.length - 1 };
+  if (e.key in map) { e.preventDefault(); render(map[e.key], true); }
+});
+
+/* ------------------------------------------------------------------ theme */
+const themeBtn = document.getElementById("themeBtn"), MODES = ["auto", "light", "dark"];
+let mode = "auto"; try { mode = localStorage.getItem("sa-lesson-theme") || "auto"; } catch (e) { }
+function applyTheme() {
+  if (mode === "auto") document.documentElement.removeAttribute("data-theme"); else document.documentElement.setAttribute("data-theme", mode);
+  themeBtn.textContent = "theme: " + mode;
+}
+themeBtn.addEventListener("click", () => { mode = MODES[(MODES.indexOf(mode) + 1) % 3]; try { localStorage.setItem("sa-lesson-theme", mode); } catch (e) { } applyTheme(); });
+applyTheme();
+
+/* ------------------------------------------------------------------ boot */
+buildScene();
+const m = /#step-(\d+)/.exec(location.hash || "");
+render(m ? (+m[1] - 1) : 0);
+document.fonts?.ready?.then(() => render(cur));   // re-measure callouts once webfonts load
+})();
+</script>

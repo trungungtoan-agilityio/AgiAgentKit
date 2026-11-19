@@ -22,7 +22,7 @@ def pct($p; $n): ($p * 100 / $n | round);
 def row: . as $g | ($g | length) as $n | ($g | passes) as $p
   | "| \($g[0].mode) | \($g[0].card) | \($n) | \($p)/\($n) (\(pct($p; $n))%) | \($g | vals(.cost_usd) | pm(3))"
     + " | \($g | vals(.tokens_out) | map(k) | pm(1)) | \($g | vals(tot) | map(k) | pm(1))"
-    + " | \($g | vals(.duration_s) | pm(0)) | \($g | vals(.turns) | pm(1)) |";
+    + " | \($g | vals(.wall_s // .duration_s) | pm(0)) | \($g | vals(.turns) | pm(1)) |";
 
 def cost_total: (vals(.cost_usd)) as $c | if ($c | length) == 0 then null else ($c | add) end;
 def cost_run: vals(.cost_usd) | mean;
@@ -32,7 +32,7 @@ def summary: . as $g | ($g | length) as $n | ($g | passes) as $p
   | "- **\($g[0].mode)**: \($n) run, thành công \($p)/\($n) (\(pct($p; $n))%); "
     + "chi phí \($g | cost_run | rnd(3) // "n/a") USD/run, tổng \($g | cost_total | rnd(2) // "n/a") USD, "
     + "mỗi run thành công \($g | cost_pass | rnd(3) // "n/a") USD; "
-    + "thời gian TB \($g | vals(.duration_s) | mn(0)) s; lượt TB \($g | vals(.turns) | mn(1)); "
+    + "thời gian TB \($g | vals(.wall_s // .duration_s) | mn(0)) s; lượt TB (session chính) \($g | vals(.turns) | mn(1)); "
     + "run lỗi/timeout \($g | map(select(.status != "ok")) | length)"
     + (if $g[0].mode == "superadvisor" then
         "; số lần gọi agent của kit TB \($g | vals(.delegations) | mn(1)); chi phí ƯỚC TÍNH theo bảng giá kit-stats \($g | vals(.kit_est_cost_usd) | mn(3)) USD/run"
@@ -56,7 +56,7 @@ def bymodel: . as $g | ($g | length) as $n
     "# Kết quả benchmark: baseline vs superadvisor", "",
     "Nguồn: `results.jsonl` (\(length) run). Dạng `a ± b` = trung bình ± độ lệch chuẩn mẫu giữa các run (một run thì ± 0).", "",
     "## Theo mode x thẻ", "",
-    "| Mode | Thẻ | Run | Thành công | Chi phí USD | Token out (nghìn) | Tổng token (nghìn) | Thời gian (s) | Lượt |",
+    "| Mode | Thẻ | Run | Thành công | Chi phí USD | Token out (nghìn) | Tổng token (nghìn) | Thời gian thật (s) | Lượt (session chính) |",
     "|------|-----|----:|-----------:|------------:|------------------:|-------------------:|--------------:|-----:|"
   ] + (group_by([.mode, .card]) | map(row))
   + ["", "## Tổng hợp theo mode", ""] + ([$b, $l] | map(select(length > 0) | summary)) + $cmp

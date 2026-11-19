@@ -87,6 +87,8 @@ Slides from the Agility IO talk: [PDF](docs/talk/Session-Superadvisor-AgilityIO.
 - [FAQ](docs/faq.md)
 - [Reference](docs/reference.md)
 - [One-page explainer](docs/explainer.html) (open the file in a browser)
+- [Step-by-step visual lesson](docs/lesson.html) (open the file in a browser)
+- [Benchmark results](bench/results.md)
 - [Benchmark](bench/README.md)
 
 ## Try the demo
@@ -108,7 +110,7 @@ cp -R ~/AgiAgentKit/demo-app ~/demo-library && cd ~/demo-library && git init -q 
 
 Watch the lanes with `superadvisor status`. Flag stuck ones with `superadvisor patrol`, and close merged idle ones
 with `superadvisor patrol --clean --apply`. End the day with `superadvisor review` and start it with
-`superadvisor report`; `superadvisor cron --install` schedules all three. To compare runs with and without the leader, see [bench/README.md](bench/README.md).
+`superadvisor report`; `superadvisor cron --install` schedules all three. To compare runs with and without the leader, see [bench/README.md](bench/README.md); the latest numbers are in [bench/results.md](bench/results.md).
 
 ## Good to know
 
