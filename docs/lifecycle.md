@@ -130,8 +130,10 @@ progress. The previous sample is kept in `brains/.local/samples/<session>.txt`.
 | Waiting too long | State is `WAITING` for at least `patrol.waiting_min` minutes | 5 |
 | No change | State is not `WAITING`, the session is not the leader, and the pane has not changed for at least `patrol.stuck_min` minutes | 20 |
 
-Patrol only reports; it never touches a session. `superadvisor cron` prints a crontab sample (patrol every 15
-minutes, report at 06:00) and a launchd sample for macOS; it installs nothing.
+Plain `patrol` only reports; it never touches a session. `patrol --clean` lists lanes that are idle for at least
+`patrol.idle_close_min` minutes (30), merged, clean and pushed; `--clean --apply` closes them and removes their
+worktrees. `superadvisor cron --install` schedules `patrol --clean --apply` every 15 minutes, `review` at 22:00 and
+`report` at 08:00 (launchd on macOS, a marked crontab block on Linux). Without a flag, `cron` only prints samples.
 
 When a lane is flagged, the `lead` skill tells the leader to look at it, report owner-only permission prompts to you,
 or close the lane, write a narrower brief and reopen it with the same name (the worktree and branch are reused). After

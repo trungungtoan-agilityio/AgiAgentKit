@@ -1,0 +1,1369 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>AgiAgentKit Atlas</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Eight isometric views of AgiAgentKit: runtime, one card, the leader loop, lane states, agent routing, hooks, tokens and install.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #efebe2; --bg-2: #e5e0d4; --surface: #fbf9f4; --surface-2: #f4f1ea;
+  --ink: #1a1e23; --ink-2: #464e58; --muted: #6f757e; --line: #d6cfc0; --line-2: #bfb7a6;
+  --ground: #ddd6c6; --grid: #cfc7b5;
+  --n-leader: #2f6f8f; --n-lane: #8794a2; --n-slab: #d1c6ad; --n-brains: #7656a3;
+  --n-metrics: #2a8768; --n-pr: #3d424a; --n-owner: #c4612c; --n-gate: #d29a22; --n-island: #cbd5cf;
+  --n-clock: #6b7a4c; --n-tool: #9a8c70;
+  --t-haiku: #2fa38b; --t-sonnet: #4a6bd0; --t-opus: #c8433a;
+  --s-busy: #4a6bd0; --s-wait: #d29a22; --s-idle: #2a8768; --s-dead: #5d6168;
+  --p-brief: #2b7bd0; --p-pr: #2a9a5f; --p-approval: #c4612c; --p-blocked: #d8352a; --p-prompt: #c9a01e; --p-metric: #7656a3; --p-patrol: #6b7a4c;
+  --accent: #c4612c; --good: #23825a; --bad: #c2392f;
+  --shadow: 0 1px 0 rgba(30,25,15,.04), 0 6px 24px -12px rgba(30,25,15,.25);
+  --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --sans: "Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1215; --bg-2: #151a1e; --surface: #171c21; --surface-2: #1c2227;
+    --ink: #e8e5dd; --ink-2: #b4b8bd; --muted: #8d949c; --line: #2a3138; --line-2: #3a434c;
+    --ground: #232a30; --grid: #2d353c;
+    --n-leader: #3f8bb0; --n-lane: #5f6d7b; --n-slab: #3a4550; --n-brains: #8a6cc0;
+    --n-metrics: #2f9c78; --n-pr: #8d95a2; --n-owner: #dd7840; --n-gate: #e0ab35; --n-island: #2c3a36;
+    --n-clock: #8a9c62; --n-tool: #8a7d62;
+    --t-haiku: #3cbca1; --t-sonnet: #6b88e6; --t-opus: #e05a4f;
+    --s-busy: #6b88e6; --s-wait: #e0ab35; --s-idle: #2f9c78; --s-dead: #7b8089;
+    --p-brief: #4b9cf0; --p-pr: #3dbb78; --p-approval: #ec8a50; --p-blocked: #ff5a4d; --p-prompt: #e6bf3a; --p-metric: #a487db; --p-patrol: #a3b67a;
+    --accent: #ec8a50; --good: #3dbb78; --bad: #ff6a5e;
+    --shadow: 0 1px 0 rgba(0,0,0,.3), 0 8px 28px -14px rgba(0,0,0,.8);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1215; --bg-2: #151a1e; --surface: #171c21; --surface-2: #1c2227;
+  --ink: #e8e5dd; --ink-2: #b4b8bd; --muted: #8d949c; --line: #2a3138; --line-2: #3a434c;
+  --ground: #232a30; --grid: #2d353c;
+  --n-leader: #3f8bb0; --n-lane: #5f6d7b; --n-slab: #3a4550; --n-brains: #8a6cc0;
+  --n-metrics: #2f9c78; --n-pr: #8d95a2; --n-owner: #dd7840; --n-gate: #e0ab35; --n-island: #2c3a36;
+  --n-clock: #8a9c62; --n-tool: #8a7d62;
+  --t-haiku: #3cbca1; --t-sonnet: #6b88e6; --t-opus: #e05a4f;
+  --s-busy: #6b88e6; --s-wait: #e0ab35; --s-idle: #2f9c78; --s-dead: #7b8089;
+  --p-brief: #4b9cf0; --p-pr: #3dbb78; --p-approval: #ec8a50; --p-blocked: #ff5a4d; --p-prompt: #e6bf3a; --p-metric: #a487db; --p-patrol: #a3b67a;
+  --accent: #ec8a50; --good: #3dbb78; --bad: #ff6a5e;
+  --shadow: 0 1px 0 rgba(0,0,0,.3), 0 8px 28px -14px rgba(0,0,0,.8);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 16px; line-height: 1.5; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+.wrap { max-width: 1240px; margin: 0 auto; padding: 20px 16px 48px; }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+code { font-family: var(--mono); font-size: .86em; background: var(--surface-2); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; overflow-wrap: anywhere; }
+.top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.crumb { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+h1 { font-size: clamp(28px, 4.4vw, 40px); line-height: 1.1; margin: 6px 0 6px; letter-spacing: -.02em; }
+h1 em { font-style: normal; color: var(--accent); }
+.sub { margin: 0; font-size: 17px; color: var(--ink-2); max-width: 70ch; }
+.theme-btn { flex: none; border: 1px solid var(--line-2); background: var(--surface); border-radius: 8px; padding: 6px 10px; font-family: var(--mono); font-size: 12px; cursor: pointer; min-height: 36px; }
+/* tabs */
+.tabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 18px 0 0; padding: 0; list-style: none; }
+.tabs a { display: inline-flex; align-items: baseline; gap: 6px; text-decoration: none; color: var(--ink); border: 1px solid var(--line-2); background: var(--surface); border-radius: 999px; padding: 6px 12px; font-size: 14px; min-height: 36px; }
+.tabs a b { font-family: var(--mono); font-size: 11px; color: var(--muted); font-weight: 500; }
+.tabs a:hover { border-color: var(--ink-2); }
+.tabs a[aria-current="page"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.tabs a[aria-current="page"] b { color: var(--bg); opacity: .7; }
+.vhead { margin: 20px 0 0; }
+.vhead h2 { font-size: 24px; line-height: 1.2; margin: 0 0 2px; letter-spacing: -.01em; }
+.vhead p { margin: 0; color: var(--ink-2); }
+/* metric cards */
+.metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; margin: 14px 0; }
+.metrics:empty { display: none; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; box-shadow: var(--shadow); min-width: 0; transition: border-color .4s; }
+.card.changed { border-color: var(--accent); }
+.card .k { font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card .v { font-size: 24px; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; line-height: 1.25; overflow-wrap: anywhere; }
+.card .d { font-family: var(--mono); font-size: 11px; color: var(--muted); min-height: 1.4em; }
+.card .d.up-bad, .card .d.down-bad { color: var(--bad); }
+.card .d.up-good, .card .d.down-good { color: var(--good); }
+/* stage */
+.stage { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 14px; align-items: start; }
+.diagram { margin: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); padding: 8px 8px 4px; min-width: 0; }
+.diagram svg.scene { display: block; width: 100%; height: auto; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 6px 8px 8px; border-top: 1px dashed var(--line); font-family: var(--mono); font-size: 11.5px; color: var(--ink-2); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend svg { flex: none; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); padding: 16px 18px; min-width: 0; }
+.panel .num { font-family: var(--mono); font-size: 12px; color: var(--accent); letter-spacing: .04em; }
+.panel h3.t { font-size: 21px; line-height: 1.2; margin: 4px 0 10px; }
+.panel p { margin: 0 0 10px; color: var(--ink-2); font-size: 15px; }
+.panel h4 { font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 14px 0 6px; font-weight: 500; }
+.panel ul { margin: 0; padding-left: 18px; font-size: 14.5px; }
+.panel li { margin: 3px 0; }
+.panel li::marker { color: var(--accent); }
+.panel li.ch-add::marker { color: var(--good); } .panel li.ch-del::marker { color: var(--bad); }
+/* timeline */
+.timeline { margin-top: 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 12px; box-shadow: var(--shadow); }
+.controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 10px; }
+.ctl { border: 1px solid var(--line-2); background: var(--surface-2); border-radius: 8px; padding: 6px 12px; cursor: pointer; font-family: var(--mono); font-size: 13px; min-height: 36px; }
+.ctl:hover { border-color: var(--ink-2); }
+.ctl.primary { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.ctl:disabled { opacity: .4; cursor: default; }
+.hint { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+.steps { list-style: none; display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; }
+.steps button { border: 1px solid var(--line); background: transparent; border-radius: 8px; padding: 5px 9px; cursor: pointer; font-size: 13px; display: inline-flex; gap: 6px; align-items: baseline; min-height: 32px; }
+.steps button b { font-family: var(--mono); font-size: 11px; color: var(--muted); font-weight: 500; }
+.steps button.done { border-color: var(--line-2); }
+.steps button[aria-current="step"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+.steps button[aria-current="step"] b { color: #fff; }
+.foot { margin-top: 14px; font-size: 12.5px; color: var(--muted); }
+/* svg */
+.lbl { font-family: var(--mono); font-size: 13px; font-weight: 700; fill: var(--ink); paint-order: stroke; stroke: var(--surface); stroke-width: 4px; stroke-linejoin: round; }
+.lbl.sm { font-size: 11px; font-weight: 500; fill: var(--ink-2); }
+.lbl.pad { font-size: 15px; letter-spacing: .06em; }
+.glyph { font-family: var(--mono); font-size: 11px; font-weight: 700; fill: var(--surface); }
+.pole { stroke: var(--ink-2); stroke-width: 2; }
+.hand { stroke: var(--ink); stroke-width: 1.6; stroke-linecap: round; }
+.face { fill: var(--surface); stroke: var(--ink); stroke-width: 1.2; }
+.edge { fill: none; stroke: var(--muted); stroke-opacity: .7; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.edge.dash { stroke-dasharray: 2 6; }
+.edge.hot { stroke: var(--accent); stroke-opacity: 1; }
+[data-node] { transition: opacity .5s ease, filter .5s ease; }
+.off { opacity: 0; pointer-events: none; }
+.ghost { opacity: .2; }
+g.hot { filter: drop-shadow(0 0 5px var(--accent)); }
+.co rect { fill: var(--ink); }
+.co text { font-family: var(--mono); font-size: 12px; fill: var(--bg); }
+.co line { stroke: var(--ink); stroke-width: 1.2; }
+.co.warn rect { fill: var(--bad); } .co.warn text { fill: #fff; } .co.warn line { stroke: var(--bad); }
+.co.good rect { fill: var(--good); } .co.good text { fill: #fff; } .co.good line { stroke: var(--good); }
+.co { animation: pop .35s ease both; }
+@keyframes pop { from { transform: translateY(4px); } to { transform: none; } }
+.pkt .x { opacity: 0; transition: opacity .15s; }
+.pkt.hit .x { opacity: 1; animation: pulse 1.4s ease-in-out infinite; }
+@keyframes pulse { 50% { stroke-opacity: .25; } }
+@media (max-width: 1000px) { .stage { grid-template-columns: 1fr; } .metrics { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); } }
+@media (max-width: 520px) {
+  .wrap { padding: 14px 16px 36px; }
+  .card .v { font-size: 20px; }
+  .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .panel { padding: 14px; } .sub { font-size: 15px; } .hint { display: none; }
+  .tabs a { font-size: 13px; padding: 5px 10px; }
+}
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="top">
+      <div class="crumb">AgiAgentKit · Session Superadvisor</div>
+      <button class="theme-btn" id="themeBtn" type="button" title="Toggle colour theme">theme: auto</button>
+    </div>
+    <h1>AgiAgentKit <em>Atlas</em></h1>
+    <p class="sub">Eight isometric views of how one leader session runs many Claude Code lanes, and what keeps them cheap and safe.</p>
+    <nav aria-label="Atlas views"><ul class="tabs" id="tabs"></ul></nav>
+  </header>
+
+  <div class="vhead"><h2 id="vTitle"></h2><p id="vIntro"></p></div>
+  <section class="metrics" id="metrics" aria-label="Metrics for the current step"></section>
+
+  <section class="stage">
+    <figure class="diagram">
+      <div id="scenes"></div>
+      <figcaption class="legend" id="legend"></figcaption>
+    </figure>
+    <article class="panel" id="panel" aria-live="polite"></article>
+  </section>
+
+  <nav class="timeline" aria-label="Steps of this view">
+    <div class="controls">
+      <button class="ctl" id="prev" type="button" aria-label="Previous step">← Back</button>
+      <button class="ctl primary" id="next" type="button" aria-label="Next step">Next →</button>
+      <span class="hint">← → keys · Home / End</span>
+    </div>
+    <ol class="steps" id="steps"></ol>
+  </nav>
+
+  <p class="foot">Metric chips marked <b>est.</b> are <b>illustrative</b>: plausible numbers that show the direction of a change, not measurements. Counts without that mark (hooks, jobs, sessions) come from the kit's docs. Hook and skill messages in the real kit are in Vietnamese; this page translates them.</p>
+</div>
+
+<script>
+/* @iso-kit:begin */
+/*! iso-kit.js — helpers for step-by-step isometric SVG lessons. MIT License (iso-lesson).
+ * Plain browser JS, no dependencies, exposes one global: IsoKit.
+ *   const kit = IsoKit.stage(svgEl, { origin: [520, 80], scale: 1, mode: "iso" | "dimetric" });
+ *   kit.isoBox(kit.node("app"), { x: 0, y: 0, w: 60, d: 60, h: 40, color: "var(--n-app)" });
+ *   kit.packetTypes({ req: { c: "var(--p-req)", name: "request", shape: "circle" } });
+ *   IsoKit.lesson({ kit, steps, metrics });
+ * World axes: +x runs down-right, +y runs down-left, +z up. Larger x+y is nearer the viewer.
+ */
+(function (root) {
+  "use strict";
+  const NS = "http://www.w3.org/2000/svg";
+  const C30 = Math.cos(Math.PI / 6);
+  const reduceMQ = root.matchMedia ? root.matchMedia("(prefers-reduced-motion: reduce)") : { matches: false };
+
+  /** SVG element in the SVG namespace; null/undefined attrs are skipped */
+  function el(tag, attrs, parent) {
+    const n = document.createElementNS(NS, tag);
+    for (const k in attrs || {}) if (attrs[k] != null) n.setAttribute(k, attrs[k]);
+    if (parent) parent.appendChild(n);
+    return n;
+  }
+  /** darken any CSS colour (var() allowed) by pct, via color-mix; pct <= 0 returns it unchanged */
+  const shade = (c, pct) => (pct <= 0 ? c : `color-mix(in oklab, ${c} ${100 - pct}%, #000)`);
+  const fmtPts = (arr) => arr.map((p) => p[0].toFixed(1) + "," + p[1].toFixed(1)).join(" ");
+  const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+  const asList = (v) => (v == null ? [] : Array.isArray(v) ? v : [v]);
+
+  /* ------------------------------------------------------------------ stage: projection + shapes */
+  function stage(svg, opts = {}) {
+    const [ox, oy] = opts.origin || [0, 0];
+    const k = opts.scale || 1;
+    const ax = opts.mode === "dimetric" ? 1 : C30;   // "iso" = true 30°, "dimetric" = 2:1 pixel-art (26.57°)
+    const ay = 0.5;
+    /** world (x, y, z) -> screen [sx, sy] */
+    const iso = (x, y, z = 0) => [ox + (x - y) * ax * k, oy + ((x + y) * ay - z) * k];
+
+    const layers = {};
+    for (const name of ["ground", "edges", "nodes", "pkts", "co"]) {
+      layers[name] = svg.querySelector("#layer-" + name) || el("g", { id: "layer-" + name }, svg);
+    }
+    const viewBox = () => {
+      const vb = svg.viewBox && svg.viewBox.baseVal;
+      return vb && vb.width ? vb : null;
+    };
+
+    const poly = (parent, P, fill, extra = {}) =>
+      el("polygon", Object.assign({ points: fmtPts(P), style: `fill:${fill}` }, extra), parent);
+
+    /** toggleable group: everything a step can show / ghost / highlight lives in one of these */
+    const node = (id, parent = layers.nodes) => el("g", { "data-node": id }, parent);
+
+    /** axis-aligned box: top, +y face (front-left), +x face (front-right) */
+    function isoBox(parent, { x, y, z = 0, w, d, h, color, stroke = "none", cls = "" }) {
+      const g = el("g", { class: ("isobox " + cls).trim() }, parent);
+      const s = { stroke, "stroke-width": stroke === "none" ? null : 1, "stroke-linejoin": "round" };
+      poly(g, [iso(x, y + d, z), iso(x + w, y + d, z), iso(x + w, y + d, z + h), iso(x, y + d, z + h)], shade(color, 26), s);
+      poly(g, [iso(x + w, y + d, z), iso(x + w, y, z), iso(x + w, y, z + h), iso(x + w, y + d, z + h)], shade(color, 14), s);
+      poly(g, [iso(x, y, z + h), iso(x + w, y, z + h), iso(x + w, y + d, z + h), iso(x, y + d, z + h)], color, s);
+      return g;
+    }
+    /** thin platform with an optional dashed inset outline on top (zones, worktrees, regions) */
+    function slab(parent, { x, y, z = 0, w, d, h = 8, color, dashed = false, inset = 6, cls = "" }) {
+      const g = isoBox(parent, { x, y, z, w, d, h, color, cls: "slab " + cls });
+      if (dashed) {
+        const i = inset, t = z + h;
+        poly(g, [iso(x + i, y + i, t), iso(x + w - i, y + i, t), iso(x + w - i, y + d - i, t), iso(x + i, y + d - i, t)], "none",
+          { stroke: "var(--ink-2)", "stroke-opacity": 0.45, "stroke-dasharray": "4 4", "stroke-width": 1.2 });
+      }
+      return g;
+    }
+    /** ground platform + faint grid lines every `step` world units */
+    function ground(parent, { x = 0, y = 0, w, d, h = 14, step = 50, color = "var(--ground)", grid = "var(--grid)" }) {
+      const g = slab(parent, { x, y, z: -h, w, d, h, color, cls: "ground" });
+      const lines = el("g", { "stroke-width": 1, style: `stroke:${grid}` }, g);
+      for (let i = step; i < w; i += step) { const a = iso(x + i, y), b = iso(x + i, y + d); el("line", { x1: a[0], y1: a[1], x2: b[0], y2: b[1] }, lines); }
+      for (let i = step; i < d; i += step) { const a = iso(x, y + i), b = iso(x + w, y + i); el("line", { x1: a[0], y1: a[1], x2: b[0], y2: b[1] }, lines); }
+      return g;
+    }
+    /** hexagonal prism: only faces whose outward normal points at the viewer (+x+y) are drawn */
+    function hexPrism(parent, { cx, cy, z = 0, r, h, color, cls = "" }) {
+      const g = el("g", { class: ("hex " + cls).trim() }, parent);
+      const v = [...Array(6)].map((_, i) => { const a = (Math.PI / 3) * i + Math.PI / 6; return [cx + r * Math.cos(a), cy + r * Math.sin(a)]; });
+      for (let i = 0; i < 6; i++) {
+        const a = v[i], b = v[(i + 1) % 6];
+        const nx = (a[0] + b[0]) / 2 - cx, ny = (a[1] + b[1]) / 2 - cy;
+        if (nx + ny <= 0.01) continue;
+        poly(g, [iso(a[0], a[1], z), iso(b[0], b[1], z), iso(b[0], b[1], z + h), iso(a[0], a[1], z + h)], shade(color, Math.round(20 + (12 * (ny - nx)) / r)));
+      }
+      poly(g, v.map((p) => iso(p[0], p[1], z + h)), color);
+      return g;
+    }
+    /** cylinder (databases, stores, logs): a ground circle of radius r projects to an axis-aligned ellipse */
+    function cylinder(parent, { cx, cy, z = 0, r, h, color, rings = 0, cls = "" }) {
+      const g = el("g", { class: ("cyl " + cls).trim() }, parent);
+      const rx = r * Math.SQRT2 * ax * k, ry = r * Math.SQRT2 * ay * k;
+      const [bx, by] = iso(cx, cy, z), [, ty] = iso(cx, cy, z + h);
+      el("path", { d: `M${bx - rx},${ty} L${bx - rx},${by} A${rx},${ry} 0 0 0 ${bx + rx},${by} L${bx + rx},${ty} Z`, style: `fill:${shade(color, 22)}` }, g);
+      for (let i = 1; i <= rings; i++) {
+        const ry2 = by - ((by - ty) * i) / (rings + 1);
+        el("path", { d: `M${bx - rx},${ry2} A${rx},${ry} 0 0 0 ${bx + rx},${ry2}`, fill: "none", style: `stroke:${shade(color, 40)}`, "stroke-width": 1.4 }, g);
+      }
+      el("ellipse", { cx: bx, cy: ty, rx, ry, style: `fill:${color}` }, g);
+      el("ellipse", { cx: bx, cy: ty, rx: rx * 0.62, ry: ry * 0.62, fill: "none", style: `stroke:${shade(color, 18)}`, "stroke-width": 1.2 }, g);
+      return g;
+    }
+    /** standing figure (users, owners); phone=true adds a small screen in hand */
+    function person(parent, { x, y, z = 0, color, phone = false, size = 1, cls = "" }) {
+      const g = el("g", { class: ("person " + cls).trim() }, parent);
+      const [px, py] = iso(x, y, z), s = size;
+      el("ellipse", { cx: px, cy: py + 1, rx: 11 * s, ry: 5 * s, fill: "#000", "fill-opacity": 0.16 }, g);
+      el("path", { d: `M${px - 8 * s},${py} Q${px - 9 * s},${py - 22 * s} ${px},${py - 23 * s} Q${px + 9 * s},${py - 22 * s} ${px + 8 * s},${py} Z`, style: `fill:${color}` }, g);
+      el("circle", { cx: px, cy: py - 31 * s, r: 7 * s, style: `fill:${shade(color, 30)}` }, g);
+      if (phone) {
+        const rot = `rotate(-14 ${px + 10 * s} ${py - 15 * s})`;
+        el("rect", { x: px + 6 * s, y: py - 22 * s, width: 8 * s, height: 13 * s, rx: 2, transform: rot, style: "fill:var(--ink)" }, g);
+        el("rect", { x: px + 7.3 * s, y: py - 20.5 * s, width: 5.4 * s, height: 8.5 * s, rx: 1, transform: rot, style: "fill:var(--accent)" }, g);
+      }
+      return g;
+    }
+    /** crowd: a slab with `count` small people on a grid, painted back to front; colours rotate */
+    function crowd(parent, { x, y, z = 0, w, d, count, colors = ["var(--accent)"], gap = 22, base = "var(--n-slab)", cls = "" }) {
+      const g = el("g", { class: ("crowd " + cls).trim() }, parent);
+      slab(g, { x, y, z, w, d, h: 6, color: base });
+      const cols = Math.max(1, Math.floor((w - gap / 2) / gap)), rows = Math.max(1, Math.floor((d - gap / 2) / gap));
+      const spots = [];
+      for (let i = 0; i < cols; i++) for (let j = 0; j < rows; j++) spots.push([x + gap * (i + 0.75), y + gap * (j + 0.75), i, j]);
+      spots.slice(0, count).sort((a, b) => a[0] + a[1] - (b[0] + b[1]))
+        .forEach(([px, py, i, j]) => person(g, { x: px, y: py, z: z + 6, size: 0.6, color: colors[(3 * i + 7 * j) % colors.length] }));
+      return g;
+    }
+    /** gate / checkpoint straddling an edge; along = "x" (edge runs along x) or "y" */
+    function gate(parent, { x, y, color, along = "x", span = 34, h = 26, glyph = true, cls = "" }) {
+      const g = el("g", { class: ("gate " + cls).trim() }, parent);
+      const half = span / 2, t = 6;
+      if (along === "x") {
+        isoBox(g, { x: x - 3, y: y - half, w: t, d: t, h, color });
+        isoBox(g, { x: x - 3, y: y + half - t, w: t, d: t, h, color });
+        isoBox(g, { x: x - 3, y: y - half, z: h, w: t, d: span, h: t, color });
+      } else {
+        isoBox(g, { x: x - half, y: y - 3, w: t, d: t, h, color });
+        isoBox(g, { x: x + half - t, y: y - 3, w: t, d: t, h, color });
+        isoBox(g, { x: x - half, y: y - 3, z: h, w: span, d: t, h: t, color });
+      }
+      if (glyph) {
+        const [sx, sy] = along === "x" ? iso(x + 3, y, h + 10) : iso(x, y + 3, h + 10);
+        el("path", { d: `M${sx},${sy - 15} l8,3 v6 c0,5 -4,8 -8,10 c-4,-2 -8,-5 -8,-10 v-6 Z`, style: `fill:${color};stroke:var(--surface)`, "stroke-width": 1.5 }, g);
+      }
+      return g;
+    }
+    /** edge: polyline through world points at height z. feeds = node id(s) whose "hot" state accents this edge */
+    function edge(parent, id, points, { z = 1, dash = false, feeds = null } = {}) {
+      const d = "M" + points.map((p) => iso(p[0], p[1], z).map((n) => n.toFixed(1)).join(",")).join(" L");
+      return el("path", { d, class: "edge" + (dash ? " dash" : ""), "data-node": id, id: "e-" + id, "data-feeds": asList(feeds).join(" ") || null }, parent);
+    }
+    /** mono label with a halo (paint-order stroke in --surface) so it stays legible over shapes */
+    function label(parent, at, text, { cls = "lbl", anchor = "middle", dx = 0, dy = 0 } = {}) {
+      const [sx, sy] = iso(...at);
+      const t = el("text", { x: sx + dx, y: sy + dy, class: cls, "text-anchor": anchor }, parent);
+      t.textContent = text;
+      return t;
+    }
+    /** callout tag above a world point with a leader line; sized from getBBox, clamped horizontally inside the viewBox */
+    function callout(parent, at, text, { kind = "", dx = 0, rise = 34 } = {}) {
+      const [sx, sy] = iso(...at);
+      const g = el("g", { class: ("co " + kind).trim() }, parent);
+      const line = el("line", { x1: sx, y1: sy, x2: sx + dx, y2: sy - rise }, g);
+      const t = el("text", { x: sx + dx, y: sy - rise - 8, "text-anchor": "middle" }, g);
+      t.textContent = text;
+      const bb = t.getBBox(), W = bb.width + 16, vb = viewBox();
+      let left = bb.x - 8, shift = 0;
+      if (vb) shift = Math.max(vb.x + 6 - left, 0) - Math.max(left + W - (vb.x + vb.width - 6), 0);
+      left += shift;
+      t.setAttribute("x", sx + dx + shift);
+      line.setAttribute("x2", sx + dx + shift);
+      g.insertBefore(el("rect", { x: left, y: bb.y - 4, width: W, height: bb.height + 8, rx: 6 }), t);
+      return g;
+    }
+    /** painter's order: items = [[depthKey, drawFn], ...]; key = x + y of the front-most corner */
+    function paint(items) { items.slice().sort((a, b) => a[0] - b[0]).forEach(([, f]) => f()); }
+
+    const kit = { svg, iso, layers, el, shade, poly, node, isoBox, slab, ground, hexPrism, cylinder, person, crowd, gate, edge, label, callout, paint };
+    Object.assign(kit, packetEngine(kit));
+    return kit;
+  }
+
+  /* ------------------------------------------------------------------ packets */
+  function packetEngine(kit) {
+    let TYPES = {}, packets = [], raf = 0, lastSpecs = [];
+    /** register packet kinds: { name: { c: cssColour, name: legendText, shape: circle|square|diamond|tri|dot|cross } } */
+    function packetTypes(types) { if (types) TYPES = Object.assign({}, TYPES, types); return TYPES; }
+    function shapeInto(g, type, s = 1) {
+      const T = TYPES[type] || { c: "var(--accent)", shape: "circle" };
+      const st = `fill:${T.c};stroke:var(--surface);stroke-width:1.5`;
+      switch (T.shape) {
+        case "square": el("rect", { x: -6 * s, y: -6 * s, width: 12 * s, height: 12 * s, rx: 2.5, style: st }, g); break;
+        case "diamond": el("rect", { x: -5.5 * s, y: -5.5 * s, width: 11 * s, height: 11 * s, transform: "rotate(45)", style: st }, g); break;
+        case "tri": el("path", { d: `M0,${-7 * s} L${7 * s},${5 * s} L${-7 * s},${5 * s} Z`, style: st }, g); break;
+        case "dot": el("circle", { r: 4.5 * s, style: st }, g); break;
+        case "cross":
+          el("circle", { r: 6.5 * s, style: st }, g);
+          el("path", { d: `M${-3 * s},${-3 * s} L${3 * s},${3 * s} M${3 * s},${-3 * s} L${-3 * s},${3 * s}`, stroke: "#fff", "stroke-width": 2, "stroke-linecap": "round" }, g);
+          break;
+        default: el("circle", { r: 6 * s, style: st }, g);
+      }
+    }
+    /** spec: { e: edgeId, t: type, rev?: bool, stop?: px travelled before it is blocked, dur?: ms } */
+    function setPackets(specs) {
+      lastSpecs = specs || [];
+      kit.layers.pkts.replaceChildren();
+      packets = [];
+      lastSpecs.forEach((sp, i) => {
+        const path = kit.svg.querySelector("#e-" + CSS.escape(sp.e));
+        if (!path) return;
+        const g = el("g", { class: "pkt" }, kit.layers.pkts);
+        shapeInto(g, sp.t);
+        if (sp.stop != null) el("circle", { r: 13, class: "x", fill: "none", style: "stroke:var(--bad)", "stroke-width": 2 }, g);
+        packets.push({ g, path, len: path.getTotalLength(), rev: !!sp.rev, stop: sp.stop, dur: sp.dur || (sp.stop != null ? 2200 : 2800), off: (i * 0.37) % 1 });
+      });
+      cancelAnimationFrame(raf);
+      if (!packets.length) return;
+      if (reduceMQ.matches) place(0.55, true); else raf = requestAnimationFrame(tick);
+    }
+    function place(now, still) {
+      for (const p of packets) {
+        const t = still ? now : (now / p.dur + p.off) % 1;
+        let dist;
+        if (p.stop != null) { dist = Math.min(t / 0.55, 1) * p.stop; p.g.classList.toggle("hit", still || t > 0.55); }
+        else dist = t * p.len;
+        const s = p.rev ? p.len - dist : dist;
+        const pt = p.path.getPointAtLength(Math.max(0, Math.min(p.len, s)));
+        p.g.setAttribute("transform", `translate(${pt.x.toFixed(1)},${(pt.y - 5).toFixed(1)})`);
+      }
+    }
+    function tick(now) { place(now, false); raf = requestAnimationFrame(tick); }
+    if (reduceMQ.addEventListener) reduceMQ.addEventListener("change", () => setPackets(lastSpecs));
+    /** legend: one swatch per packet type (or the listed ones), drawn with the same shapeInto as the packets */
+    function legend(container, only) {
+      container.replaceChildren();
+      for (const t of only || Object.keys(TYPES)) {
+        const span = document.createElement("span");
+        const s = el("svg", { width: 16, height: 16, viewBox: "-8 -8 16 16", "aria-hidden": "true" }, span);
+        shapeInto(s, t, 0.95);
+        span.appendChild(document.createTextNode((TYPES[t] || {}).name || t));
+        container.appendChild(span);
+      }
+    }
+    return { packetTypes, shapeInto, setPackets, legend };
+  }
+
+  /* ------------------------------------------------------------------ metrics */
+  /** defs: [{ k, label, fmt?, better: -1 | 0 | 1, none?, basis?: "illustrative" | "measured" }] */
+  function metricsRow(container, defs) {
+    container.replaceChildren();
+    for (const m of defs) {
+      const card = document.createElement("div");
+      card.className = "card"; card.dataset.k = m.k;
+      card.innerHTML = '<div class="k"></div><div class="v">–</div><div class="d"></div>';
+      card.querySelector(".k").textContent = m.label + (m.basis === "illustrative" ? " · est." : "");
+      if (m.basis) card.title = m.basis === "measured" ? "measured value" : "illustrative value, not a measurement";
+      container.appendChild(card);
+    }
+    /** now/prev: { [k]: value } (null = not measured); notes: { [k]: text } overrides the delta line */
+    return function update(now, prev, notes = {}) {
+      for (const m of defs) {
+        const fmt = m.fmt || String;
+        const card = container.querySelector(`[data-k="${CSS.escape(m.k)}"]`);
+        const v = now ? now[m.k] : null, p = prev ? prev[m.k] : undefined;
+        const d = card.querySelector(".d");
+        card.querySelector(".v").textContent = v == null ? "—" : fmt(v);
+        d.className = "d"; card.classList.remove("changed");
+        if (notes[m.k]) { d.textContent = notes[m.k]; card.classList.toggle("changed", prev != null && p !== v); }
+        else if (v == null) d.textContent = m.none || "";
+        else if (prev == null) d.textContent = "baseline";
+        else if (p == null) { d.textContent = "now measured"; card.classList.add("changed"); }
+        else if (p === v || typeof v !== "number" || typeof p !== "number") {
+          d.textContent = p === v ? "no change" : "was " + fmt(p);
+          card.classList.toggle("changed", p !== v);
+        } else {
+          const up = v > p;
+          d.textContent = (up ? "▲ " : "▼ ") + fmt(+Math.abs(v - p).toFixed(6));
+          if (m.better) d.classList.add((up ? "up-" : "down-") + ((up ? 1 : -1) === m.better ? "good" : "bad"));
+          card.classList.add("changed");
+        }
+      }
+    };
+  }
+
+  /* ------------------------------------------------------------------ lesson binder + playback */
+  /**
+   * steps: [{ short: text, title: text, body: [html], changes: [text], extra?: html, m: {k: v}, mNote?: {k: text},
+   *           show: [ids], ghost?: [ids], hot?: [ids], packets?: [spec], co?: [{ at, text, kind?, dx?, rise? }] }]
+   * short/title/changes are escaped; body/extra are author-written HTML (trusted): never feed them untrusted input.
+   */
+  function lesson({ kit, steps, metrics = [], ids = {}, stepMs = 7500, hashPrefix = "step-", onRender = null }) {
+    const $ = (key, def) => document.getElementById(ids[key] || def);
+    const panel = $("panel", "panel"), stepsOl = $("steps", "steps"), prevB = $("prev", "prev"), nextB = $("next", "next");
+    const playB = $("play", "play"), replayB = $("replay", "replay"), progBar = $("progBar", "progBar");
+    const legendEl = $("legend", "legend"), mWrap = $("metrics", "metrics"), countEl = $("count", "chipSteps");
+    const updateMetrics = mWrap && metrics.length ? metricsRow(mWrap, metrics) : null;
+    if (legendEl) kit.legend(legendEl);
+    if (countEl) countEl.textContent = steps.length + " steps";
+    stepsOl.innerHTML = steps.map((s, i) => `<li><button type="button" data-i="${i}"><b>${String(i + 1).padStart(2, "0")}</b>${esc(s.short)}</button></li>`).join("");
+
+    let cur = 0, playing = false, timer = 0, progRaf = 0;
+    function render(i, fromUser = false) {
+      cur = Math.max(0, Math.min(steps.length - 1, i));
+      const s = steps[cur], show = new Set(s.show || []), ghost = new Set(s.ghost || []), hot = new Set(s.hot || []);
+      kit.svg.querySelectorAll("[data-node]").forEach((n) => {
+        const id = n.dataset.node;
+        n.classList.toggle("off", !show.has(id) && !ghost.has(id));
+        n.classList.toggle("ghost", ghost.has(id));
+        n.classList.toggle("hot", hot.has(id));
+      });
+      kit.svg.querySelectorAll(".edge").forEach((e) => {
+        const feeds = (e.dataset.feeds || "").split(" ").filter(Boolean);
+        e.classList.toggle("hot", hot.has(e.dataset.node) || feeds.some((f) => hot.has(f)));
+      });
+      kit.setPackets(s.packets || []);
+      kit.layers.co.replaceChildren();
+      for (const c of s.co || []) {
+        const o = Array.isArray(c) ? { at: c[0], text: c[1], kind: c[2], dx: c[3], rise: c[4] } : c;
+        kit.callout(kit.layers.co, o.at, o.text, { kind: o.kind || "", dx: o.dx || 0, rise: o.rise ?? 34 });
+      }
+      const mark = (t) => (/^[+−~-]\s/.test(t) ? ` class="ch-${{ "+": "add", "-": "del", "−": "del", "~": "mod" }[t[0]]}"` : "");
+      panel.innerHTML = `<div class="num">STEP ${String(cur + 1).padStart(2, "0")} / ${steps.length}</div><h2>${esc(s.title)}</h2>` +
+        (s.body || []).map((p) => `<p>${p}</p>`).join("") +
+        (s.changes && s.changes.length ? `<h3>What changed</h3><ul>${s.changes.map((c) => `<li${mark(c)}>${esc(c)}</li>`).join("")}</ul>` : "") +
+        (s.extra ? `<div class="extra">${s.extra}</div>` : "");
+      if (updateMetrics) updateMetrics(s.m, cur > 0 ? steps[cur - 1].m : null, s.mNote);
+      stepsOl.querySelectorAll("button").forEach((b, j) => {
+        b.classList.toggle("done", j < cur);
+        if (j === cur) b.setAttribute("aria-current", "step"); else b.removeAttribute("aria-current");
+      });
+      if (prevB) prevB.disabled = cur === 0;
+      if (nextB) nextB.disabled = cur === steps.length - 1;
+      try { history.replaceState(null, "", "#" + hashPrefix + (cur + 1)); } catch (e) { /* sandboxed frame */ }
+      if (fromUser && playing) restartTimer();
+      if (onRender) onRender(cur, s);
+    }
+    function setPlaying(on) {
+      playing = on;
+      if (playB) { playB.setAttribute("aria-pressed", String(on)); playB.textContent = on ? "❚❚ Pause" : "▶ Play"; }
+      clearTimeout(timer); cancelAnimationFrame(progRaf);
+      if (progBar) progBar.style.width = "0";
+      if (on) restartTimer();
+    }
+    function restartTimer() {
+      clearTimeout(timer); cancelAnimationFrame(progRaf);
+      const start = performance.now();
+      const loop = (t) => { progBar.style.width = Math.min(100, ((t - start) / stepMs) * 100) + "%"; progRaf = requestAnimationFrame(loop); };
+      if (progBar && !reduceMQ.matches) progRaf = requestAnimationFrame(loop);
+      timer = setTimeout(() => { if (cur < steps.length - 1) { render(cur + 1); restartTimer(); } else setPlaying(false); }, stepMs);
+    }
+    const go = (i) => { const to = Math.max(0, Math.min(steps.length - 1, i)); if (to !== cur) render(to, true); };
+    if (prevB) prevB.addEventListener("click", () => go(cur - 1));
+    if (nextB) nextB.addEventListener("click", () => go(cur + 1));
+    if (playB) playB.addEventListener("click", () => { if (!playing && cur === steps.length - 1) render(0); setPlaying(!playing); });
+    if (replayB) replayB.addEventListener("click", () => { render(0); setPlaying(true); });
+    stepsOl.addEventListener("click", (e) => { const b = e.target.closest("button[data-i]"); if (b) go(+b.dataset.i); });
+    document.addEventListener("keydown", (e) => {
+      if (e.target.closest && e.target.closest("input, textarea, select, [contenteditable]")) return;
+      if (e.altKey || e.ctrlKey || e.metaKey) return;
+      const map = { ArrowRight: cur + 1, ArrowLeft: cur - 1, Home: 0, End: steps.length - 1 };
+      if (e.key in map) { e.preventDefault(); go(map[e.key]); }
+    });
+    const m = new RegExp("#" + hashPrefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "(\\d+)").exec(location.hash || "");
+    render(m ? +m[1] - 1 : 0);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => render(cur));   // re-measure callouts with the web font
+    return { render, get current() { return cur; }, play: setPlaying };
+  }
+
+  /* ------------------------------------------------------------------ theme toggle: auto -> light -> dark */
+  function theme(btn, storageKey = "iso-lesson-theme") {
+    const MODES = ["auto", "light", "dark"];
+    let mode = "auto";
+    try { mode = localStorage.getItem(storageKey) || "auto"; } catch (e) { /* storage blocked */ }
+    if (!MODES.includes(mode)) mode = "auto";
+    const apply = () => {
+      if (mode === "auto") document.documentElement.removeAttribute("data-theme");
+      else document.documentElement.setAttribute("data-theme", mode);
+      if (btn) btn.textContent = "theme: " + mode;
+    };
+    if (btn) btn.addEventListener("click", () => {
+      mode = MODES[(MODES.indexOf(mode) + 1) % MODES.length];
+      try { localStorage.setItem(storageKey, mode); } catch (e) { /* storage blocked */ }
+      apply();
+    });
+    apply();
+  }
+
+  root.IsoKit = { version: "1.0.0", stage, metricsRow, lesson, theme, el, shade, esc, reduceMotion: reduceMQ };
+})(window);
+/* @iso-kit:end */
+</script>
+<script>
+(() => {
+"use strict";
+if (!window.IsoKit) { document.getElementById("panel").textContent = "iso-kit.js is not inlined yet."; return; }
+IsoKit.theme(document.getElementById("themeBtn"), "agikit-atlas-theme");
+const NS = "http://www.w3.org/2000/svg";
+
+const PKT = {
+  brief:    { c: "var(--p-brief)",    name: "brief / work",          shape: "circle" },
+  pr:       { c: "var(--p-pr)",       name: "PR / report",           shape: "square" },
+  approval: { c: "var(--p-approval)", name: "owner message",         shape: "diamond" },
+  blocked:  { c: "var(--p-blocked)",  name: "blocked call",          shape: "cross" },
+  prompt:   { c: "var(--p-prompt)",   name: "permission prompt / ask", shape: "tri" },
+  metric:   { c: "var(--p-metric)",   name: "token row",             shape: "dot" },
+  patrol:   { c: "var(--p-patrol)",   name: "scheduled job",         shape: "dot" },
+};
+
+/* ---------------- shared shape vocabulary */
+function shapes(k) {
+  const { el, iso, label, node } = k;
+  const lbl = (g, at, t, dy, cls = "lbl", extra = {}) => label(g, at, t, Object.assign({ cls, dy }, extra));
+  return {
+    lbl,
+    leader(id, cx, cy, r = 44, sub = "PROJ-LEAD") {
+      const g = node(id), h = Math.round(r * 1.2);
+      k.hexPrism(g, { cx, cy, r, h, color: "var(--n-leader)" });
+      k.hexPrism(g, { cx, cy, z: h, r: r * 0.48, h: 9, color: "var(--n-leader)" });
+      lbl(g, [cx, cy, h + 9], "LEADER", -32); if (sub) lbl(g, [cx, cy, h + 9], sub, -18, "lbl sm");
+      return g;
+    },
+    lane(id, x, y, name, { w = 110, d = 80, sub = "", color = "var(--n-lane)" } = {}) {
+      const g = node(id);
+      k.slab(g, { x, y, w, d, h: 7, color: "var(--n-slab)", dashed: true });
+      const bw = Math.round(w * 0.42), bd = Math.round(d * 0.55), bx = x + (w - bw) / 2, by = y + (d - bd) / 2;
+      k.isoBox(g, { x: bx, y: by, z: 7, w: bw, d: bd, h: 30, color });
+      const [sx, sy] = iso(bx + bw / 2, by + bd / 2, 37);
+      el("text", { x: sx, y: sy + 4, "text-anchor": "middle", class: "glyph" }, g).textContent = ">_";
+      if (name) lbl(g, [x + w, y + d / 2, 0], name, 16, "lbl", { anchor: "start", dx: 6 });
+      if (sub) lbl(g, [x + w, y + d / 2, 0], sub, 30, "lbl sm", { anchor: "start", dx: 6 });
+      return g;
+    },
+    token(id, x, y, w = 50, d = 40) {           // a bare lane box (no slab), used on state pads
+      const g = node(id);
+      k.isoBox(g, { x, y, z: 6, w, d, h: 28, color: "var(--n-lane)" });
+      const [sx, sy] = iso(x + w / 2, y + d / 2, 34);
+      el("text", { x: sx, y: sy + 4, "text-anchor": "middle", class: "glyph" }, g).textContent = ">_";
+      return g;
+    },
+    store(id, cx, cy, r, h, name, sub, color = "var(--n-brains)") {
+      const g = node(id);
+      k.cylinder(g, { cx, cy, r, h, color, rings: h > 30 ? 2 : 1 });
+      lbl(g, [cx, cy, h], name, sub ? -r * 0.9 - 14 : -r * 0.9); if (sub) lbl(g, [cx, cy, h], sub, -r * 0.9, "lbl sm");
+      return g;
+    },
+    box(id, x, y, w, d, h, name, sub, color = "var(--n-tool)") {
+      const g = node(id);
+      k.isoBox(g, { x, y, w, d, h, color });
+      lbl(g, [x + w / 2, y + d / 2, h], name, sub ? -26 : -12); if (sub) lbl(g, [x + w / 2, y + d / 2, h], sub, -12, "lbl sm");
+      return g;
+    },
+    github(id, x, y, sub = "PR", w = 70, d = 56) {
+      const g = node(id);
+      k.isoBox(g, { x, y, w, d, h: 30, color: "var(--n-pr)" });
+      k.isoBox(g, { x: x + w * 0.24, y: y + d * 0.25, z: 30, w: w * 0.52, d: d * 0.5, h: 7, color: "var(--p-pr)" });
+      lbl(g, [x + w / 2, y + d / 2, 37], "GitHub", -30); lbl(g, [x + w / 2, y + d / 2, 37], sub, -16, "lbl sm");
+      return g;
+    },
+    owner(id, x, y, sub = "phone · Remote Control") {
+      const g = node(id);
+      k.slab(g, { x: x - 45, y: y - 45, z: -6, w: 90, d: 90, h: 10, color: "var(--n-island)" });
+      k.person(g, { x, y, z: 4, color: "var(--n-owner)", phone: true });
+      lbl(g, [x, y, 4], "OWNER", -46); if (sub) lbl(g, [x + 45, y + 45, -6], sub, 18, "lbl sm");
+      return g;
+    },
+    clock(id, x, y, name = "cron / launchd", sub = "") {
+      const g = node(id), w = 34, h = 62;
+      k.isoBox(g, { x, y, w, d: w, h, color: "var(--n-clock)" });
+      k.isoBox(g, { x: x + 6, y: y + 6, z: h, w: w - 12, d: w - 12, h: 8, color: "var(--n-clock)" });
+      const [fx, fy] = iso(x + w, y + w / 2, h - 18);
+      el("ellipse", { cx: fx, cy: fy, rx: 9, ry: 11, class: "face" }, g);
+      el("line", { x1: fx, y1: fy, x2: fx, y2: fy - 7, class: "hand" }, g);
+      el("line", { x1: fx, y1: fy, x2: fx + 5, y2: fy + 2, class: "hand" }, g);
+      lbl(g, [x + w / 2, y + w / 2, h + 8], name, sub ? -28 : -14); if (sub) lbl(g, [x + w / 2, y + w / 2, h + 8], sub, -14, "lbl sm");
+      return g;
+    },
+    gate(id, x, y, name, sub, { along = "x", color = "var(--n-gate)", up = 0 } = {}) {
+      const g = node(id);
+      k.gate(g, { x, y, along, color });
+      if (name) lbl(g, [x, y, 40], name, -14 - up); if (sub) lbl(g, [x, y, 40], sub, -1 - up, "lbl sm");
+      return g;
+    },
+    flag(id, x, y, z = 6) {
+      const g = node(id), [px, py] = iso(x, y, z);
+      el("line", { x1: px, y1: py, x2: px, y2: py - 48, class: "pole" }, g);
+      el("path", { d: `M${px},${py - 48} l22,7 l-22,8 Z`, style: "fill:var(--bad)" }, g);
+      return g;
+    },
+  };
+}
+const soft = (c) => `color-mix(in oklab, ${c} 42%, var(--ground))`;
+
+/* ---------------- 1. runtime */
+function buildRuntime(k) {
+  const S = shapes(k), L = k.layers, E = (id, p, o) => k.edge(L.edges, id, p, o);
+  k.ground(L.ground, { w: 600, d: 410, step: 50 });
+  const C = [70, 180, 290];
+  E("rc", [[-50, 325], [130, 325], [130, 240], [182, 240]], { dash: true, feeds: "owner" });
+  E("eBrains", [[90, 122], [90, 200], [182, 200]], { feeds: "brains" });
+  E("eGH", [[220, 176], [220, 80]], { feeds: "gh" });
+  E("ePR", [[400, 40], [255, 40]], { feeds: "gh" });
+  C.forEach((c, i) => E("b" + i, [[258, 220], [330, 220], [330, c], [400, c]], { feeds: "lane" + i }));
+  E("eLM", [[220, 264], [220, 340]], { feeds: "events" });
+  E("eMet", [[455, 330], [455, 370], [250, 370]], { feeds: "events" });
+  C.forEach((c, i) => E("p" + i, [[573, 34], [573, c], [510, c]], { feeds: "clock" }));
+  const it = [
+    [244, () => S.store("brains", 90, 90, 32, 46, "brains/", "lead.md · decisions.md · inbox/")],
+    [335, () => S.github("gh", 185, 24, "one PR per lane")],
+    [484, () => S.leader("leader", 220, 220, 44, "PROJ-LEAD · tmux -L sa")],
+    [650, () => S.store("events", 220, 370, 30, 36, "events.jsonl", ".claude/metrics/", "var(--n-metrics)")],
+    [624, () => S.clock("clock", 556, 0, "cron / launchd", "cron --install")],
+    [-1000, () => S.owner("owner", -95, 325)],
+  ];
+  C.forEach((c, i) => {
+    it.push([510 + c + 40, () => S.lane("lane" + i, 400, c - 40, "lane/c" + (i + 1), {})]);
+    it.push([372 + c + 17, () => S.gate("gate" + i, 370, c, i === 0 ? "hooks" : "", "")]);
+  });
+  k.paint(it);
+}
+const RUNTIME = {
+  id: "runtime", tab: "Runtime", title: "The runtime at a glance",
+  intro: "One leader session, many lane sessions in tmux, a brains/ folder, hooks on every call, and a scheduler.",
+  build: buildRuntime,
+  metrics: [
+    { k: "s", label: "Sessions live", fmt: String },
+    { k: "h", label: "Hooks active", fmt: String },
+    { k: "j", label: "Scheduled jobs", fmt: String },
+    { k: "o", label: "Owner msgs / card", fmt: String, better: -1, basis: "illustrative" },
+  ],
+  steps: [
+    { short: "Owner → leader", title: "You talk only to the leader",
+      body: ["<code>superadvisor up</code> starts <code>PROJ-LEAD</code> on tmux socket <code>sa</code>, in auto mode with Remote Control, so you can drive it from a phone.",
+        "The leader reads <code>brains/</code>: what it may do alone, what it must ask, and decisions already made."],
+      changes: ["+ leader session PROJ-LEAD", "+ brains/ read at start"],
+      m: { s: 1, h: 0, j: 0, o: 1 },
+      show: ["owner", "leader", "brains", "rc", "eBrains"], hot: ["leader"],
+      packets: [{ e: "rc", t: "approval" }, { e: "eBrains", t: "brief", dur: 3600 }],
+      co: [{ at: [240, 220, 70], text: "sizes cards S / M / L", dx: 110, rise: 40 }] },
+    { short: "Lanes open", title: "One card, one lane, one worktree",
+      body: ["For each M or L card the leader writes a brief and runs <code>superadvisor lane open</code>. Each lane gets branch <code>lane/&lt;name&gt;</code>, its own worktree and a tmux session with <code>KIT_LANE=1</code>.",
+        "S cards (1–3 files) never get a lane: the leader does them itself."],
+      changes: ["+ three lane sessions", "~ leader stops writing large blocks of code"],
+      m: { s: 4, h: 0, j: 0, o: 1 },
+      show: ["owner", "leader", "brains", "rc", "eBrains", "lane0", "lane1", "lane2", "b0", "b1", "b2"], hot: ["lane0", "lane1", "lane2"],
+      packets: [{ e: "b0", t: "brief" }, { e: "b1", t: "brief" }, { e: "b2", t: "brief" }],
+      co: [{ at: [455, 290, 40], text: "model: Claude Code default", dx: -40, rise: 40 }] },
+    { short: "Hooks", title: "Hooks sit on every tool call",
+      body: ["Four PreToolUse hooks stop common token sinks and owner-only actions: <code>turn-guard</code>, <code>test-budget</code>, <code>agent-routing</code>, <code>owner-guard</code>.",
+        "In auto mode a blocking hook denies with guidance, so the lane changes course instead of waiting."],
+      changes: ["+ 4 blocking hooks", "− a lane can no longer merge or push to main"],
+      m: { s: 4, h: 4, j: 0, o: 1 },
+      show: ["owner", "leader", "brains", "rc", "eBrains", "lane0", "lane1", "lane2", "b0", "b1", "b2", "gate0", "gate1", "gate2"], hot: ["gate0", "gate1", "gate2"],
+      packets: [{ e: "b0", t: "brief" }, { e: "b1", t: "blocked", stop: 168 }, { e: "b2", t: "brief" }],
+      co: [{ at: [370, 180, 40], text: "gh pr merge → denied", kind: "warn", dx: 30, rise: 46 }] },
+    { short: "PRs", title: "Lanes open PRs; you approve merges",
+      body: ["A lane pushes its branch and opens a PR against the integration branch, then stops. The leader checks tests and runs at most two review rounds.",
+        "It reports in five lines; you answer <code>M 12</code> and it merges on the exact head you approved."],
+      changes: ["+ GitHub PR per lane", "+ owner approval message"],
+      m: { s: 4, h: 4, j: 0, o: 2 },
+      show: ["owner", "leader", "brains", "rc", "eBrains", "lane0", "lane1", "lane2", "b0", "b1", "b2", "gate0", "gate1", "gate2", "gh", "ePR", "eGH"], hot: ["gh"],
+      packets: [{ e: "ePR", t: "pr" }, { e: "eGH", t: "pr", rev: true }, { e: "rc", t: "approval", dur: 3400 }, { e: "rc", t: "pr", rev: true, dur: 3400 }],
+      co: [{ at: [-95, 325, 50], text: "M 12", dx: 0, rise: 30 }] },
+    { short: "Metrics + cron", title: "Metrics and a scheduler close the loop",
+      body: ["Two more hooks log tokens to <code>.claude/metrics/events.jsonl</code> in the main checkout, so nothing is lost when a worktree goes.",
+        "<code>superadvisor cron --install</code> runs <code>patrol --clean --apply</code> every 15 min, <code>review</code> at 22:00 and <code>report</code> at 08:00."],
+      changes: ["+ metrics-subagent and metrics-main hooks", "+ 3 scheduled jobs (launchd or crontab)", "~ merged idle lanes close themselves"],
+      m: { s: 4, h: 6, j: 3, o: 2 },
+      show: ["owner", "leader", "brains", "rc", "eBrains", "lane0", "lane1", "lane2", "b0", "b1", "b2", "gate0", "gate1", "gate2", "gh", "ePR", "eGH", "events", "eLM", "eMet", "clock", "p0", "p1", "p2"], hot: ["clock", "events"],
+      packets: [{ e: "eMet", t: "metric" }, { e: "eLM", t: "metric" }, { e: "p0", t: "patrol", dur: 3800 }, { e: "p1", t: "patrol", dur: 3800 }, { e: "p2", t: "patrol", dur: 3800 }],
+      co: [{ at: [573, 17, 80], text: "15 min · 22:00 · 08:00", kind: "good", dx: -60, rise: 30 }] },
+  ],
+};
+
+/* ---------------- 2. life of one card */
+function buildCard(k) {
+  const S = shapes(k), L = k.layers, E = (id, p, o) => k.edge(L.edges, id, p, o);
+  k.ground(L.ground, { w: 640, d: 250, step: 50 });
+  E("eAsk", [[-40, 135], [75, 135]], { dash: true, feeds: "owner" });
+  E("eBrief", [[110, 90], [110, 50]], { feeds: "briefs" });
+  E("eOpen", [[145, 130], [260, 130]], { feeds: "lane" });
+  E("eMet", [[320, 85], [320, 50]], { feeds: "events" });
+  E("ePR", [[380, 130], [470, 130]], { feeds: "gh" });
+  E("eMerge", [[110, 170], [110, 215], [505, 215], [505, 160]], { feeds: "gh" });
+  k.paint([
+    [100, () => S.store("briefs", 110, 30, 20, 24, "briefs/c3.md", "brains/.local/")],
+    [100.5, () => S.store("events", 320, 30, 20, 24, "events.jsonl", "", "var(--n-metrics)")],
+    [280, () => S.leader("leader", 110, 130, 40, "DEMO-LIBRARY-LEAD")],
+    [347, () => S.gate("gate", 215, 130, "hooks", "")],
+    [555, () => S.lane("lane", 260, 85, "lane/c3", { w: 120, d: 90 })],
+    [700, () => S.github("gh", 470, 100, "PR #12 → main")],
+    [-1000, () => S.owner("owner", -85, 135, "")],
+  ]);
+}
+const CARD = {
+  id: "card", tab: "One card", title: "Life of one card",
+  intro: "Card C3 (reservations queue, size M) from the demo backlog, from your message to a merged PR.",
+  build: buildCard,
+  metrics: [
+    { k: "c", label: "Card", fmt: String },
+    { k: "o", label: "Owner messages", fmt: String, better: -1 },
+    { k: "w", label: "Worktrees", fmt: String },
+    { k: "r", label: "Review rounds (max 2)", fmt: String, basis: "illustrative" },
+  ],
+  steps: [
+    { short: "Ask", title: "\"Read BACKLOG.md, open a lane for C3\"",
+      body: ["The leader reads <code>brains/</code>, sizes C3 as M and writes one brief: task, done-when, files, model, allowed and forbidden actions, test command.",
+        "The brief is copied to <code>brains/.local/briefs/c3.md</code>."],
+      changes: ["+ brief for c3", "~ card sized M"],
+      m: { c: "sized M", o: 1, w: 0, r: 0 },
+      show: ["owner", "leader", "briefs", "eAsk", "eBrief"], hot: ["briefs"],
+      packets: [{ e: "eAsk", t: "approval" }, { e: "eBrief", t: "brief", dur: 2400 }] },
+    { short: "lane open", title: "lane open c3 --brief c3-brief.md",
+      body: ["The name is checked (a-z, 0-9, hyphen; not <code>lead</code>), the integration branch must exist, then worktree <code>.claude/worktrees/c3</code> is created on branch <code>lane/c3</code>.",
+        "tmux session <code>DEMO-LIBRARY-C3</code> starts there with <code>KIT_LANE=1</code>, auto mode and Remote Control."],
+      changes: ["+ worktree and branch lane/c3", "+ lane session DEMO-LIBRARY-C3"],
+      m: { c: "in lane", o: 1, w: 1, r: 0 },
+      show: ["owner", "leader", "briefs", "eAsk", "eBrief", "lane", "eOpen"], hot: ["lane"],
+      packets: [{ e: "eOpen", t: "brief" }],
+      co: [{ at: [320, 130, 40], text: "no --model → default model", dx: 0, rise: 44 }] },
+    { short: "Work", title: "The lane works under the hooks",
+      body: ["A builder writes code, a tester writes tests. Every tool call passes the hooks; a merge or a push to main is denied by <code>owner-guard</code>.",
+        "Token counts land in <code>events.jsonl</code> in the main checkout."],
+      changes: ["+ hooks on every call", "+ token rows logged"],
+      m: { c: "in lane", o: 1, w: 1, r: 0 },
+      show: ["owner", "leader", "briefs", "eAsk", "eBrief", "lane", "eOpen", "gate", "events", "eMet"], hot: ["gate"],
+      packets: [{ e: "eOpen", t: "blocked", rev: true, stop: 40 }, { e: "eMet", t: "metric", rev: true }],
+      co: [{ at: [215, 130, 40], text: "push to main → denied", kind: "warn", dx: -30, rise: 44 }] },
+    { short: "PR", title: "PR open; the leader reports in 5 lines",
+      body: ["The lane runs the brief's test command, pushes <code>lane/c3</code>, opens a PR against the integration branch and stops.",
+        "The leader checks the PR, runs at most two <code>reviewer</code> rounds, then reports: <em>Needs you: M 12</em>."],
+      changes: ["+ PR #12", "+ 5-line report to you"],
+      m: { c: "PR #12", o: 1, w: 1, r: 1 },
+      show: ["owner", "leader", "briefs", "eAsk", "eBrief", "lane", "eOpen", "gate", "events", "eMet", "gh", "ePR"], hot: ["gh"],
+      packets: [{ e: "ePR", t: "pr" }, { e: "eOpen", t: "pr", rev: true }, { e: "eAsk", t: "pr", rev: true, dur: 3200 }],
+      co: [{ at: [505, 130, 44], text: "tests green on head", kind: "good", dx: 0, rise: 36 }] },
+    { short: "Merge + close", title: "\"M 12\": merge, then close the lane",
+      body: ["Your <code>M 12</code> is the only way the leader merges: tests green on the exact head, no High/Critical findings left. A changed head means it asks again.",
+        "<code>lane close c3 --rm-worktree</code> removes the worktree once merged; otherwise patrol auto-closes it after 30 idle minutes."],
+      changes: ["+ owner approval", "+ PR merged into main", "− worktree and lane session removed"],
+      m: { c: "merged", o: 2, w: 0, r: 1 },
+      show: ["owner", "leader", "briefs", "eAsk", "eBrief", "eOpen", "events", "eMet", "gh", "ePR", "eMerge"], ghost: ["lane", "gate"], hot: ["gh", "leader"],
+      packets: [{ e: "eAsk", t: "approval" }, { e: "eMerge", t: "pr", dur: 3400 }],
+      co: [{ at: [320, 130, 40], text: "lane close --rm-worktree", dx: -90, rise: 30 }] },
+  ],
+};
+
+/* ---------------- 3. leader loop */
+function buildLoop(k) {
+  const S = shapes(k), L = k.layers, E = (id, p, o) => k.edge(L.edges, id, p, o);
+  k.ground(L.ground, { w: 560, d: 400, step: 50 });
+  E("eInbox", [[80, 90], [80, 190], [220, 190]], { feeds: "brains" });
+  E("eOwner", [[-50, 305], [150, 305], [150, 212], [220, 212]], { dash: true, feeds: "owner" });
+  E("eGH", [[260, 154], [260, 72]], { feeds: "gh" });
+  E("eL1", [[300, 190], [360, 190], [360, 90], [420, 90]], { feeds: "lane1" });
+  E("eL2", [[300, 210], [420, 210]], { feeds: "lane2" });
+  E("eClock", [[260, 330], [260, 246]], { feeds: "clock" });
+  k.paint([
+    [150, () => S.store("brains", 80, 60, 30, 42, "brains/", "inbox/ · decisions.md")],
+    [367, () => S.github("gh", 225, 16, "open PRs")],
+    [506, () => S.leader("leader", 260, 200, 46, "one event at a time")],
+    [660, () => S.lane("lane1", 420, 50, "lane/c1", { sub: "card left?" })],
+    [780, () => S.lane("lane2", 420, 170, "lane/c3", { sub: "flagged stuck" })],
+    [641, () => S.clock("clock", 243, 330, "patrol", "every 15 min")],
+    [-1000, () => S.owner("owner", -95, 305, "")],
+  ]);
+}
+const LOOP_ALL = ["brains", "gh", "leader", "lane1", "lane2", "clock", "owner", "eInbox", "eOwner", "eGH", "eL1", "eL2", "eClock"];
+const LOOP = {
+  id: "leader-loop", tab: "Leader loop", title: "The leader's loop",
+  intro: "Each event (patrol tick, inbox item, PR update, your message) runs the same five questions, in order.",
+  build: buildLoop,
+  metrics: [
+    { k: "b", label: "Lanes busy", fmt: String, basis: "illustrative" },
+    { k: "s", label: "Stuck lanes", fmt: String, better: -1, basis: "illustrative" },
+    { k: "p", label: "PRs waiting", fmt: String, better: -1, basis: "illustrative" },
+    { k: "o", label: "Msgs to owner", fmt: String, basis: "illustrative" },
+  ],
+  steps: [
+    { short: "1 · Stuck?", title: "Any lane stuck? Unblock it",
+      body: ["Patrol flags lane c3: waiting on a prompt for 5+ minutes or unchanged for 20+. The leader looks at it.",
+        "Owner-only prompts go to you; otherwise it closes the lane and reopens it with the same name and a narrower brief. After a second stall it asks you."],
+      changes: ["~ narrower brief for c3", "+ same worktree and branch reused"],
+      m: { b: 2, s: 0, p: 1, o: 0 }, mNote: { s: "was 1 · unblocked" },
+      show: LOOP_ALL, hot: ["lane2", "clock"],
+      packets: [{ e: "eClock", t: "patrol", dur: 3200 }, { e: "eL2", t: "brief" }],
+      co: [{ at: [475, 210, 44], text: "stuck → reopen narrower", kind: "warn", dx: -20, rise: 40 }] },
+    { short: "2 · Merge?", title: "PR ready and owner said M <n>? Merge",
+      body: ["Only on your word, within <code>brains/lead.md</code>: green tests on the exact head, no High/Critical findings after at most two review rounds.",
+        "Releases, deploys, permission changes and force pushes always go back to you."],
+      changes: ["+ merge on approved head", "− PR waiting list shrinks"],
+      m: { b: 2, s: 0, p: 0, o: 1 },
+      show: LOOP_ALL, hot: ["gh"],
+      packets: [{ e: "eOwner", t: "approval" }, { e: "eGH", t: "pr" }],
+      co: [{ at: [260, 44, 50], text: "head changed? ask again", dx: 0, rise: 30 }] },
+    { short: "3 · Assign?", title: "Idle lane and a card left? Assign it",
+      body: ["New work arrives through <code>brains/inbox/</code> or the backlog. The leader sizes it and writes a brief.",
+        "An idle lane gets the next M card; S cards it does itself."],
+      changes: ["+ brief from inbox to lane c1"],
+      m: { b: 2, s: 0, p: 0, o: 1 },
+      show: LOOP_ALL, hot: ["brains", "lane1"],
+      packets: [{ e: "eInbox", t: "brief" }, { e: "eL1", t: "brief" }] },
+    { short: "4 · Done?", title: "Lane finished? Close it",
+      body: ["When a lane's PR is merged, the leader runs <code>lane close &lt;name&gt; --rm-worktree</code> and writes one line to <code>brains/decisions.md</code>.",
+        "If it forgets, the scheduled <code>patrol --clean --apply</code> closes merged lanes idle for 30 minutes."],
+      changes: ["− lane c1 session and worktree", "+ one line in decisions.md"],
+      m: { b: 1, s: 0, p: 0, o: 1 },
+      show: LOOP_ALL.filter((x) => x !== "lane1" && x !== "eL1"), ghost: ["lane1", "eL1"], hot: ["brains"],
+      packets: [{ e: "eInbox", t: "pr", rev: true }] },
+    { short: "5 · Report?", title: "Anything new for you? Report in 5 lines",
+      body: ["<em>Done · Running · Needs you</em>, with a command you can copy. Nothing new means no message.",
+        "Otherwise it keeps another lane busy and waits for the next event."],
+      changes: ["+ 5-line report", "~ loop restarts on the next event"],
+      m: { b: 1, s: 0, p: 0, o: 2 },
+      show: LOOP_ALL.filter((x) => x !== "lane1" && x !== "eL1"), hot: ["owner"],
+      packets: [{ e: "eOwner", t: "pr", rev: true }],
+      co: [{ at: [-95, 305, 50], text: "Done · Running · Needs you", dx: 30, rise: 30 }] },
+  ],
+};
+
+/* ---------------- 4. lane states */
+const PADS = { busy: [40, 40], wait: [260, 40], idle: [40, 220], dead: [260, 220], closed: [470, 220] };
+function buildStates(k) {
+  const S = shapes(k), L = k.layers, E = (id, p, o) => k.edge(L.edges, id, p, o);
+  k.ground(L.ground, { w: 620, d: 370, step: 50 });
+  E("tBW", [[160, 85], [260, 85]]); E("tBI", [[100, 130], [100, 220]]); E("tID", [[160, 265], [260, 265]]);
+  E("tWD", [[320, 130], [320, 220]]); E("tIC", [[100, 310], [100, 345], [530, 345], [530, 310]], { feeds: "closed" });
+  E("eClk", [[487, 94], [487, 220]], { dash: true, feeds: "clock" });
+  const names = { busy: "BUSY", wait: "WAITING", idle: "IDLE", dead: "DEAD", closed: "CLOSED" };
+  const col = { busy: "var(--s-busy)", wait: "var(--s-wait)", idle: "var(--s-idle)", dead: "var(--s-dead)", closed: "var(--n-slab)" };
+  const it = [];
+  for (const s in PADS) {
+    const [x, y] = PADS[s];
+    it.push([x + y + 210, () => {
+      const g = k.node("pad-" + s);
+      k.slab(g, { x, y, w: 120, d: 90, h: 6, color: s === "closed" ? col[s] : soft(col[s]), dashed: s === "closed" });
+    }]);
+    it.push([3000, () => S.lbl(k.node("pl-" + s), [x + 98, y + 72, 6], names[s], 0, "lbl pad")]);
+    if (s !== "closed") it.push([x + y + 211, () => S.token("tok-" + s, x + 35, y + 14)]);
+  }
+  it.push([500, () => S.flag("flag-wait", 368, 50)], [500, () => S.flag("flag-idle", 148, 230)], [700, () => S.flag("flag-dead", 368, 230)]);
+  it.push([188, () => S.clock("clock", 470, 60, "patrol", "every 15 min (cron)")]);
+  it.push([2000, () => { const g = k.node("tlabels"), l = (at, t, dy) => S.lbl(g, at, t, dy, "lbl sm");
+    l([210, 85, 0], "permission prompt", -8); l([100, 175, 0], "done / waits for input", -6, "start");
+    l([210, 265, 0], "claude exited", -8); l([320, 175, 0], "pane dead", -6); l([315, 345, 0], "patrol --clean --apply", 16); }]);
+  k.paint(it);
+}
+const ST_BASE = ["pad-busy", "pad-wait", "pad-idle", "pad-dead", "pad-closed", "pl-busy", "pl-wait", "pl-idle", "pl-dead", "pl-closed", "tBW", "tBI", "tID", "tWD", "tIC", "eClk", "clock", "tlabels"];
+const STATES = {
+  id: "lane-states", tab: "Lane states", title: "Lane states and patrol flags",
+  intro: "status reads each tmux pane's last 15 non-empty lines; patrol adds a stuck flag and, with --clean --apply, closes finished lanes.",
+  build: buildStates,
+  metrics: [
+    { k: "st", label: "State", fmt: String },
+    { k: "m", label: "Minutes unchanged", fmt: (v) => v + "m", basis: "illustrative" },
+    { k: "f", label: "Stuck flags (so far)", fmt: String, better: -1 },
+    { k: "l", label: "Lanes open", fmt: String },
+  ],
+  steps: [
+    { short: "BUSY", title: "BUSY: the pane shows it is working",
+      body: ["The last lines contain <code>esc to interrupt</code>, <code>ctrl+c to interrupt</code> or a spinner line.",
+        "Minutes count since the pane's letters last changed; digits and symbols are dropped, so clocks and spinners do not count as progress."],
+      changes: ["+ lane working"],
+      m: { st: "BUSY", m: 0, f: 0, l: 1 },
+      show: [...ST_BASE, "tok-busy"], hot: ["tok-busy"] },
+    { short: "WAITING", title: "WAITING: a permission prompt",
+      body: ["Lines like <code>Do you want to</code>, <code>Allow this</code>, <code>(y/n)</code> or <code>1. Yes</code> mean the lane waits on a person.",
+        "At <code>patrol.waiting_min</code> (5 min) patrol prints a stuck flag; the leader forwards owner-only prompts to you."],
+      changes: ["~ BUSY → WAITING", "+ stuck flag at 5 min"],
+      m: { st: "WAITING", m: 6, f: 1, l: 1 },
+      show: [...ST_BASE, "tok-wait", "flag-wait"], ghost: ["tok-busy"], hot: ["tok-wait", "tBW"],
+      packets: [{ e: "tBW", t: "prompt" }],
+      co: [{ at: [320, 85, 60], text: "WAITING ≥ 5 min → flag", kind: "warn", dx: 0, rise: 34 }] },
+    { short: "IDLE", title: "IDLE: finished, or waiting for input",
+      body: ["None of the busy or prompt patterns match. Idle is normal after a lane opens its PR.",
+        "A non-leader session unchanged for <code>patrol.stuck_min</code> (20 min) gets a stuck flag."],
+      changes: ["~ BUSY → IDLE", "+ stuck flag at 20 min"],
+      m: { st: "IDLE", m: 22, f: 2, l: 1 },
+      show: [...ST_BASE, "tok-idle", "flag-idle"], ghost: ["tok-busy"], hot: ["tok-idle", "tBI"],
+      packets: [{ e: "tBI", t: "brief" }],
+      co: [{ at: [100, 265, 60], text: "no change ≥ 20 min → flag", kind: "warn", dx: 20, rise: 34 }] },
+    { short: "DEAD", title: "DEAD: Claude Code exited",
+      body: ["Panes are kept with <code>remain-on-exit</code>, so tmux can report the pane as dead instead of the session vanishing.",
+        "DEAD always gets a flag. Patrol never touches a session on its own here; the leader decides."],
+      changes: ["~ any state → DEAD", "+ flag at once"],
+      m: { st: "DEAD", m: 0, f: 3, l: 1 },
+      show: [...ST_BASE, "tok-dead", "flag-dead"], ghost: ["tok-idle"], hot: ["tok-dead", "tID"],
+      packets: [{ e: "tID", t: "blocked", stop: 70 }],
+      co: [{ at: [320, 265, 60], text: "pane dead → flag", kind: "warn", dx: 0, rise: 34 }] },
+    { short: "Auto-close", title: "Auto-close: merged idle lanes go away",
+      body: ["<code>patrol --clean --apply</code> (every 15 min after <code>cron --install</code>) closes a lane that is IDLE for <code>idle_close_min</code> (30), merged, with a clean worktree and no unpushed commits.",
+        "It re-checks right before closing, removes the worktree and logs <code>AUTO-CLOSE</code> in <code>patrol.log</code>."],
+      changes: ["+ IDLE → CLOSED after 30 min", "− lane session and worktree"],
+      m: { st: "CLOSED", m: 31, f: 3, l: 0 },
+      show: [...ST_BASE], ghost: ["tok-idle"], hot: ["pad-closed", "clock", "tIC"],
+      packets: [{ e: "tIC", t: "pr", dur: 3600 }, { e: "eClk", t: "patrol", dur: 3000 }],
+      co: [{ at: [530, 265, 20], text: "idle ≥30m · merged · clean", kind: "good", dx: -30, rise: 40 }] },
+  ],
+};
+
+/* ---------------- 5. agent routing */
+function buildRouting(k) {
+  const S = shapes(k), L = k.layers, E = (id, p, o) => k.edge(L.edges, id, p, o);
+  k.ground(L.ground, { w: 820, d: 300, step: 50 });
+  E("eIn", [[110, 145], [200, 145]], { feeds: "gate" });
+  E("eH", [[110, 145], [200, 145], [200, 260], [315, 260], [315, 210]], { feeds: "haiku" });
+  E("eS", [[110, 145], [200, 145], [200, 260], [515, 260], [515, 210]], { feeds: "sonnet" });
+  E("eO", [[110, 145], [200, 145], [200, 260], [715, 260], [715, 210]], { feeds: "opus" });
+  const tier = (id, x, h, label, sub, agents) => {
+    const g = k.node(id), c = `var(--t-${id})`;
+    k.isoBox(g, { x, y: 70, w: 130, d: 140, h, color: soft(c) });
+    S.lbl(g, [x + 65, 210, 0], label, 20, "lbl pad"); S.lbl(g, [x + 65, 210, 0], sub, 36, "lbl sm");
+    agents.forEach(([name, ax, ay]) => { const a = k.node(id + "-" + name, g); k.isoBox(a, { x: ax, y: ay, z: h, w: 40, d: 40, h: 26, color: c }); S.lbl(a, [ax + 20, ay + 20, h + 26], name, -12); });
+  };
+  k.paint([
+    [295, () => S.lane("lane", 10, 105, "", { w: 100, d: 80 })],
+    [327, () => S.gate("gate", 160, 145, "agent-routing", "every Agent call")],
+    [590, () => tier("haiku", 250, 14, "HAIKU", "cheap reads", [["scout", 295, 120]])],
+    [790, () => tier("sonnet", 450, 38, "SONNET", "writes code", [["builder", 460, 90], ["tester", 525, 150]])],
+    [990, () => tier("opus", 650, 64, "OPUS", "judgement", [["debugger", 660, 90], ["reviewer", 725, 150]])],
+  ]);
+  const g = k.node("lanelbl"); S.lbl(g, [60, 185, 0], "lane / leader", 22);
+}
+const R_ALL = ["lane", "lanelbl", "gate", "haiku", "sonnet", "opus", "eIn"];
+const ROUTING = {
+  id: "routing", tab: "Routing", title: "Which agent does the work",
+  intro: "Five agents, each pinned to a model tier in its frontmatter. Cheap models read, mid-tier models write, strong models judge.",
+  build: buildRouting,
+  metrics: [
+    { k: "h", label: "Haiku share", fmt: (v) => v + "%", basis: "illustrative" },
+    { k: "s", label: "Sonnet share", fmt: (v) => v + "%", basis: "illustrative" },
+    { k: "o", label: "Opus share", fmt: (v) => v + "%", basis: "illustrative" },
+    { k: "c", label: "Cost / call vs haiku", fmt: (v) => "×" + v.toFixed(1), better: -1, basis: "illustrative" },
+  ],
+  steps: [
+    { short: "Gate", title: "agent-routing checks every Agent call",
+      body: ["A call that passes <code>model</code>, uses <code>general-purpose</code> or has no <code>subagent_type</code> is denied with guidance: pick a roster agent.",
+        "So a session cannot quietly upgrade a cheap lookup to the strongest model."],
+      changes: ["+ model overrides denied"],
+      m: { h: 0, s: 0, o: 0, c: 0 },
+      show: R_ALL, hot: ["gate"],
+      packets: [{ e: "eIn", t: "blocked", stop: 48 }],
+      co: [{ at: [160, 145, 50], text: "model override → deny", kind: "warn", dx: 10, rise: 40 }] },
+    { short: "scout", title: "Only reading? scout on Haiku",
+      body: ["Find files, symbols, call sites, summaries: read-only tools (Read, Grep, Glob).",
+        "Most calls are reads, so most calls land on the cheapest tier."],
+      changes: ["+ reads go to haiku"],
+      m: { h: 100, s: 0, o: 0, c: 1 },
+      show: [...R_ALL, "eH"], hot: ["haiku-scout"],
+      packets: [{ e: "eH", t: "brief" }, { e: "eH", t: "brief", dur: 3400 }] },
+    { short: "builder · tester", title: "Cause known, 1–5 files? builder, then tester",
+      body: ["<code>builder</code> makes known-cause changes; <code>tester</code> writes or fixes tests. Both on Sonnet.",
+        "<code>turn-guard</code> caps their runs: warn at 60 and 90 tool calls, block from 130."],
+      changes: ["+ writes go to sonnet", "~ blended cost per call rises"],
+      m: { h: 65, s: 35, o: 0, c: 1.7 },
+      show: [...R_ALL, "eH", "eS"], hot: ["sonnet-builder", "sonnet-tester"],
+      packets: [{ e: "eH", t: "brief" }, { e: "eS", t: "brief" }] },
+    { short: "debugger · reviewer", title: "Unknown cause or judgement? Opus",
+      body: ["<code>debugger</code> takes unknown root causes, cross-layer or flaky bugs, or a builder that failed twice. <code>reviewer</code> does one read-only review before a PR.",
+        "The strong model appears only where judgement matters."],
+      changes: ["+ escalation builder → debugger", "+ one review per PR", "− most expensive tier"],
+      m: { h: 55, s: 33, o: 12, c: 2.1 },
+      show: [...R_ALL, "eH", "eS", "eO"], hot: ["opus-debugger", "opus-reviewer"],
+      packets: [{ e: "eH", t: "brief" }, { e: "eS", t: "brief" }, { e: "eO", t: "brief", dur: 3600 }],
+      co: [{ at: [480, 110, 64], text: "failed twice → debugger", dx: 0, rise: 40 }] },
+    { short: "Lane model", title: "The lane session itself",
+      body: ["Agents are pinned; the lane session is not. Without <code>--model</code>, <code>lane open</code> runs Claude Code's default model.",
+        "The <code>lead</code> skill tells the leader to brief lanes for sonnet and pick opus only when a card needs judgement."],
+      changes: ["~ lane model = default unless --model"],
+      m: { h: 55, s: 33, o: 12, c: 2.1 },
+      show: [...R_ALL, "eH", "eS", "eO"], hot: ["lane"],
+      co: [{ at: [60, 145, 40], text: "--model <id> overrides", dx: 30, rise: 44 }] },
+  ],
+};
+
+/* ---------------- 6. hook pipeline */
+function buildHooks(k) {
+  const S = shapes(k), L = k.layers, E = (id, p, o) => k.edge(L.edges, id, p, o);
+  k.ground(L.ground, { w: 820, d: 300, step: 50 });
+  E("eCall", [[100, 140], [720, 140]]);
+  E("eGuide", [[245, 140], [245, 235], [55, 235], [55, 180]], { feeds: "guide" });
+  E("eAsk", [[375, 140], [375, 330]], { dash: true, feeds: "owner" });
+  E("eStop", [[55, 100], [55, 40], [400, 40]], { feeds: "events" });
+  const G = [[180, "turn-guard", "any tool"], [310, "test-budget", "Bash"], [440, "owner-guard", "lanes · Bash, edits"], [570, "agent-routing", "Agent · Task"]];
+  const it = [
+    [150, () => S.gate("gSub", 150, 40, "metrics-subagent", "SubagentStop", { color: "var(--n-metrics)" })],
+    [290, () => S.gate("gMain", 290, 40, "metrics-main", "Stop", { color: "var(--n-metrics)", up: 30 })],
+    [466, () => S.store("events", 426, 40, 26, 32, "events.jsonl", "", "var(--n-metrics)")],
+    [280, () => S.lane("lane", 10, 100, "", { w: 90, d: 80 })],
+    [960, () => S.box("tool", 720, 110, 70, 60, 34, "tool runs", "allowed")],
+    [-1000, () => S.owner("owner", 375, 375, "")],
+  ];
+  G.forEach(([x, n, s], i) => it.push([x + 160, () => S.gate("g" + i, x, 140, n, s, { up: i % 2 ? 30 : 0 })]));
+  k.paint(it);
+  const g = k.node("hlabels"); S.lbl(g, [140, 235, 0], "deny + guidance (auto mode)", 16, "lbl sm"); S.lbl(g, [375, 290, 0], "ask (other modes)", 0, "lbl sm", { anchor: "start", dx: 10 });
+}
+const HK_ALL = ["lane", "eCall", "g0", "g1", "g2", "g3", "tool"];
+const HOOKS = {
+  id: "hooks", tab: "Hooks", title: "The hook pipeline",
+  intro: "Four PreToolUse gates on the way to a tool, two logging hooks on the way out. They save tokens; they are not a security boundary.",
+  build: buildHooks,
+  metrics: [
+    { k: "a", label: "Calls allowed", fmt: String, basis: "illustrative" },
+    { k: "d", label: "Calls denied", fmt: String, basis: "illustrative" },
+    { k: "q", label: "Asked owner", fmt: String, better: -1, basis: "illustrative" },
+    { k: "r", label: "Rows logged", fmt: String, basis: "illustrative" },
+  ],
+  steps: [
+    { short: "Allowed", title: "A normal call passes every gate",
+      body: ["Each hook matches only its tools: <code>turn-guard</code> any tool, <code>test-budget</code> Bash, <code>owner-guard</code> Bash and edits, <code>agent-routing</code> Agent and Task.",
+        "Without <code>jq</code> every hook lets the call through."],
+      changes: ["+ 4 PreToolUse checks"],
+      m: { a: 40, d: 0, q: 0, r: 0 },
+      show: HK_ALL, hot: ["tool"],
+      packets: [{ e: "eCall", t: "brief" }, { e: "eCall", t: "brief", dur: 3600 }] },
+    { short: "test-budget", title: "test-budget denies a whole-suite run",
+      body: ["<code>npm test</code>, <code>vitest</code>, <code>pytest</code> or <code>go test ./...</code> with no file or filter is denied. A file, folder, <code>-t</code>, <code>-k</code> or <code>--changed</code> passes.",
+        "In auto mode the deny carries guidance, so the agent narrows the run instead of waiting."],
+      changes: ["+ whole suite denied", "+ guidance back to the agent"],
+      m: { a: 40, d: 1, q: 0, r: 0 },
+      show: [...HK_ALL, "eGuide", "hlabels"], hot: ["g1"],
+      packets: [{ e: "eCall", t: "blocked", stop: 208 }, { e: "eGuide", t: "brief", dur: 3200 }],
+      co: [{ at: [310, 140, 70], text: "add a file or -t", kind: "warn", dx: 0, rise: 34 }] },
+    { short: "owner-guard", title: "owner-guard keeps lanes off owner work",
+      body: ["Only when <code>KIT_LANE=1</code>: <code>gh pr merge</code>, pushes to <code>main</code>/<code>master</code>/<code>dev</code> and writes to <code>.claude/settings*.json</code>.",
+        "It always denies, in every mode: there is nobody in a lane to ask."],
+      changes: ["+ merge / protected push denied in lanes"],
+      m: { a: 40, d: 2, q: 0, r: 0 },
+      show: [...HK_ALL, "eGuide", "hlabels"], hot: ["g2"],
+      packets: [{ e: "eCall", t: "blocked", stop: 338 }],
+      co: [{ at: [440, 140, 70], text: "always deny", kind: "warn", dx: 20, rise: 34 }] },
+    { short: "turn-guard · mode", title: "turn-guard caps long runs; mode decides deny or ask",
+      body: ["<code>builder</code>/<code>tester</code> runs warn at 60 and 90 tool calls and are blocked from 130 (Read and Grep still pass so they can report).",
+        "Blocking hooks deny in auto mode and ask you in other modes."],
+      changes: ["+ cap at 130 calls", "~ other modes: ask owner"],
+      m: { a: 40, d: 3, q: 1, r: 0 },
+      show: [...HK_ALL, "eGuide", "eAsk", "owner", "hlabels"], hot: ["g0", "owner"],
+      packets: [{ e: "eCall", t: "blocked", stop: 78 }, { e: "eAsk", t: "prompt", dur: 3200 }],
+      co: [{ at: [180, 140, 70], text: "warn 60 · 90 · block 130", kind: "warn", dx: -10, rise: 34 }] },
+    { short: "Metrics hooks", title: "Two hooks log tokens, never block",
+      body: ["<code>metrics-subagent</code> runs at each SubagentStop, <code>metrics-main</code> at each Stop. Both append to <code>events.jsonl</code> in the main checkout.",
+        "On error they exit quietly; they never hold up a session."],
+      changes: ["+ subagent and main rows"],
+      m: { a: 40, d: 3, q: 1, r: 6 },
+      show: [...HK_ALL, "eGuide", "eAsk", "owner", "hlabels", "eStop", "gSub", "gMain", "events"], hot: ["events", "gSub", "gMain"],
+      packets: [{ e: "eStop", t: "metric" }, { e: "eStop", t: "metric", dur: 3500 }] },
+  ],
+};
+
+/* ---------------- 7. tokens → scorecard */
+function buildTokens(k) {
+  const S = shapes(k), L = k.layers, E = (id, p, o) => k.edge(L.edges, id, p, o);
+  k.ground(L.ground, { w: 800, d: 320, step: 50 });
+  E("eSub", [[80, 60], [280, 60], [280, 107]], { feeds: "gSub" });
+  E("eMain", [[80, 230], [280, 230], [280, 183]], { feeds: "gMain" });
+  E("eStats", [[318, 145], [380, 145]], { feeds: "stats" });
+  E("ePrice", [[415, 58], [415, 115]], { feeds: "price" });
+  E("eCard", [[450, 145], [540, 145]], { feeds: "card" });
+  E("eWatch", [[300, 182], [300, 275], [380, 275]], { feeds: "watch" });
+  E("eSpend", [[450, 275], [510, 275]], { feeds: "spend" });
+  E("eRep", [[700, 205], [700, 250]], { feeds: "rep" });
+  k.paint([
+    [90, () => S.box("tSub", 10, 30, 70, 60, 26, "subagent run", "transcript", "var(--n-lane)")],
+    [260, () => S.box("tMain", 10, 200, 70, 60, 26, "main session", "transcript", "var(--n-leader)")],
+    [210, () => S.gate("gSub", 130, 60, "metrics-subagent", "", { color: "var(--n-metrics)" })],
+    [380, () => S.gate("gMain", 130, 230, "metrics-main", "", { color: "var(--n-metrics)" })],
+    [70, () => S.store("price", 415, 40, 18, 20, "pricing.json", "")],
+    [426, () => S.store("events", 280, 145, 38, 54, "events.jsonl", "token counts only")],
+    [625, () => S.box("stats", 380, 115, 70, 60, 30, "kit-stats.sh")],
+    [750, () => S.box("watch", 380, 250, 70, 50, 26, "token-watch.sh", "--hours 24")],
+    [890, () => S.box("spend", 510, 250, 80, 50, 18, "recent spend")],
+    [1040, () => S.box("rep", 660, 250, 80, 50, 18, "report · review")],
+    [945, () => { const g = k.node("card");
+      k.slab(g, { x: 540, y: 85, w: 230, d: 120, h: 6, color: "var(--n-slab)", dashed: true });
+      [["main", 560, 96, "var(--n-leader)"], ["opus", 610, 52, "var(--t-opus)"], ["sonnet", 660, 40, "var(--t-sonnet)"], ["haiku", 710, 14, "var(--t-haiku)"]]
+        .forEach(([n, x, h, c]) => { k.isoBox(g, { x, y: 150, z: 6, w: 30, d: 30, h, color: c }); S.lbl(g, [x + 15, 180, 6], n, 16, "lbl sm"); });
+      S.lbl(g, [655, 85, 6], "scorecard.md · .json", -8); }],
+  ]);
+}
+const TK_SRC = ["tSub", "tMain", "gSub", "gMain"];
+const TOKENS = {
+  id: "tokens", tab: "Tokens", title: "From tokens to a scorecard",
+  intro: "The two metrics hooks turn transcripts into rows; kit-stats.sh turns rows into cost per model and a fit score per agent.",
+  build: buildTokens,
+  metrics: [
+    { k: "r", label: "Rows in events.jsonl", fmt: String, basis: "illustrative" },
+    { k: "m", label: "Main session share", fmt: (v) => v + "%", better: -1, basis: "illustrative" },
+    { k: "c", label: "Cost today", fmt: (v) => "$" + v.toFixed(2), better: -1, basis: "illustrative" },
+    { k: "e", label: "Escalations", fmt: String, better: -1, basis: "illustrative" },
+  ],
+  steps: [
+    { short: "Subagent rows", title: "Each subagent run becomes one row",
+      body: ["At SubagentStop, <code>metrics-subagent</code> writes a <code>subagent</code> row: agent, model, tokens, turns, duration.",
+        "The folder holds token counts only, never prompt text, and has its own <code>.gitignore</code>."],
+      changes: ["+ kind: subagent rows"],
+      m: { r: 12, m: null, c: null, e: null },
+      show: ["tSub", "gSub", "events", "eSub"], hot: ["gSub"],
+      packets: [{ e: "eSub", t: "metric" }, { e: "eSub", t: "metric", dur: 3600 }] },
+    { short: "Main rows", title: "The main session, per model",
+      body: ["At each Stop, <code>metrics-main</code> writes a <code>main</code> row per model with tokens and <code>ctx_max</code>, the largest context seen.",
+        "The main session (or the leader) is usually the biggest cost, because its context keeps growing."],
+      changes: ["+ kind: main rows with ctx_max"],
+      m: { r: 15, m: null, c: null, e: null },
+      show: [...TK_SRC, "events", "eSub", "eMain"], hot: ["gMain"],
+      packets: [{ e: "eSub", t: "metric" }, { e: "eMain", t: "metric" }] },
+    { short: "kit-stats", title: "kit-stats.sh builds the scorecard",
+      body: ["It prices rows with a table (override with <code>.claude/metrics/pricing.json</code>) and writes <code>scorecard.md</code> and <code>scorecard.json</code>.",
+        "Cost per model, the main session, and a fit score per agent and tier: how often work escalated, for example builder → debugger."],
+      changes: ["+ scorecard bars", "~ costs are estimates, not your bill"],
+      m: { r: 15, m: 58, c: 4.1, e: 1 },
+      show: [...TK_SRC, "events", "eSub", "eMain", "stats", "price", "card", "eStats", "ePrice", "eCard"], hot: ["card", "stats"],
+      packets: [{ e: "eStats", t: "metric" }, { e: "ePrice", t: "metric", dur: 3000 }, { e: "eCard", t: "metric" }],
+      co: [{ at: [575, 165, 102], text: "main = biggest bar", dx: 0, rise: 30 }] },
+    { short: "Read it", title: "Who reads the numbers",
+      body: ["<code>token-watch.sh --hours 24</code> shows recent spend. <code>superadvisor report</code> (08:00) and <code>review</code> (22:00) add the scorecard's cost lines.",
+        "<code>kit-tune</code>-style changes start from this data: fewer escalations, a smaller leader context."],
+      changes: ["+ recent spend", "+ cost lines in report and review"],
+      m: { r: 15, m: 58, c: 4.1, e: 1 },
+      show: [...TK_SRC, "events", "eSub", "eMain", "stats", "price", "card", "eStats", "ePrice", "eCard", "watch", "spend", "rep", "eWatch", "eSpend", "eRep"], hot: ["watch", "rep"],
+      packets: [{ e: "eWatch", t: "metric" }, { e: "eSpend", t: "metric" }, { e: "eRep", t: "metric" }] },
+  ],
+};
+
+/* ---------------- 8. install */
+function buildInstall(k) {
+  const S = shapes(k), L = k.layers, E = (id, p, o) => k.edge(L.edges, id, p, o);
+  k.ground(L.ground, { w: 780, d: 300, step: 50 });
+  [[100, 160], [260, 320], [420, 480]].forEach(([a, b], i) => E("eS" + i, [[a, 175], [b, 175]], { feeds: "st" + (i + 1) }));
+  E("eS3", [[580, 175], [659, 175]], { feeds: "leader" });
+  E("eRC", [[690, 300], [690, 211]], { dash: true, feeds: "owner" });
+  E("eClk", [[690, 74], [690, 139]], { dash: true, feeds: "clock" });
+  const stone = (g, x, name, sub) => { k.slab(g, { x, y: 130, w: 100, d: 90, h: 8, color: "var(--n-slab)", dashed: true }); S.lbl(g, [x + 50, 220, 0], name, 20); if (sub) S.lbl(g, [x + 50, 220, 0], sub, 34, "lbl sm"); };
+  k.paint([
+    [320, () => { const g = k.node("st0"); stone(g, 0, "prerequisites", "claude · git · tmux · jq");
+      ["var(--n-leader)", "var(--n-owner)", "var(--n-metrics)", "var(--n-brains)"].forEach((c, i) => k.isoBox(g, { x: 14 + (i % 2) * 40, y: 145 + Math.floor(i / 2) * 36, z: 8, w: 22, d: 22, h: 16, color: c })); }],
+    [480, () => { const g = k.node("st1"); stone(g, 160, "git clone", "AgiAgentKit/"); k.isoBox(g, { x: 185, y: 150, z: 8, w: 50, d: 50, h: 30, color: "var(--n-lane)" }); }],
+    [640, () => { const g = k.node("st2"); stone(g, 320, "plugin install", "5 agents · 6 hooks · lead skill"); k.isoBox(g, { x: 342, y: 150, z: 8, w: 56, d: 50, h: 24, color: "var(--n-pr)" });
+      ["haiku", "sonnet", "sonnet", "opus", "opus"].forEach((t, i) => k.isoBox(g, { x: 346 + i * 10, y: 168, z: 32, w: 8, d: 8, h: 9, color: `var(--t-${t})` })); }],
+    [800, () => { const g = k.node("st3"); stone(g, 480, "superadvisor init", "rules · brains/ · CLAUDE.md");
+      k.cylinder(g, { cx: 510, cy: 165, r: 18, h: 28, color: "var(--n-brains)", rings: 1 }); k.isoBox(g, { x: 540, y: 172, z: 8, w: 26, d: 30, h: 24, color: "var(--surface-2)", stroke: "var(--line-2)" }); }],
+    [900, () => S.leader("leader", 690, 175, 36, "tmux -L sa")],
+    [780, () => S.clock("clock", 673, 40, "cron --install", "")],
+    [-1000, () => S.owner("owner", 690, 345, "")],
+  ]);
+}
+const INSTALL = {
+  id: "install", tab: "Install", title: "Install and first run",
+  intro: "About ten minutes from a clean machine to a leader you can talk to, then one command to put it on a schedule.",
+  build: buildInstall,
+  metrics: [
+    { k: "c", label: "Commands run", fmt: String },
+    { k: "t", label: "Minutes", fmt: (v) => "~" + v, basis: "illustrative" },
+    { k: "s", label: "Sessions", fmt: String },
+    { k: "j", label: "Scheduled jobs", fmt: String },
+  ],
+  steps: [
+    { short: "Clone", title: "Prerequisites, then clone",
+      body: ["Claude Code, <code>git</code>, <code>tmux</code> and <code>jq</code> on macOS or Linux (Windows: WSL). Node.js only for the demo app.",
+        "<code>git clone</code> the kit; optionally put <code>AgiAgentKit/bin</code> on your PATH."],
+      changes: ["+ kit on disk"],
+      m: { c: 1, t: 2, s: 0, j: 0 },
+      show: ["st0", "st1", "eS0"], hot: ["st1"] },
+    { short: "Plugin", title: "Add the marketplace, install the plugin",
+      body: ["<code>claude plugin marketplace add ./AgiAgentKit</code>, then <code>claude plugin install agi-agent-kit@agi-agent-kit</code>.",
+        "Check with <code>claude plugin details</code>: five agents, the hooks and the <code>lead</code> skill. Or try once with <code>--plugin-dir</code>."],
+      changes: ["+ 5 agents, 6 hooks, lead skill"],
+      m: { c: 3, t: 4, s: 0, j: 0 },
+      show: ["st0", "st1", "st2", "eS0", "eS1"], hot: ["st2"],
+      packets: [{ e: "eS1", t: "brief" }] },
+    { short: "init", title: "superadvisor init your project",
+      body: ["Copies, never overwriting: <code>.claude/rules/</code>, <code>brains/</code> (<code>lead.md</code>, <code>config.json</code>, <code>decisions.md</code>, <code>directives/</code>, <code>inbox/</code>) and a <code>CLAUDE.md</code> block.",
+        "Fill the <code>&lt;...&gt;</code> placeholders and commit to the integration branch: lanes branch from it."],
+      changes: ["+ brains/ and rules in the repo", "+ .gitignore for brains/.local/ and worktrees"],
+      m: { c: 5, t: 7, s: 0, j: 0 },
+      show: ["st0", "st1", "st2", "st3", "eS0", "eS1", "eS2"], hot: ["st3"],
+      packets: [{ e: "eS2", t: "brief" }],
+      co: [{ at: [530, 175, 40], text: "never overwrites", kind: "good", dx: 0, rise: 50 }] },
+    { short: "up", title: "superadvisor up: the leader starts",
+      body: ["Session <code>YOUR-PROJECT-LEAD</code> on socket <code>sa</code>, auto mode, Remote Control on.",
+        "Attach with <code>tmux -L sa attach -t YOUR-PROJECT-LEAD</code>, or open it from the Claude app. <code>superadvisor status</code> shows one line."],
+      changes: ["+ leader session", "+ terminal or phone access"],
+      m: { c: 6, t: 9, s: 1, j: 0 },
+      show: ["st0", "st1", "st2", "st3", "eS0", "eS1", "eS2", "leader", "eS3", "owner", "eRC"], hot: ["leader"],
+      packets: [{ e: "eS3", t: "brief" }, { e: "eRC", t: "approval", rev: true }] },
+    { short: "cron --install", title: "cron --install: put it on a schedule",
+      body: ["<code>patrol --clean --apply</code> every 15 minutes, <code>review</code> at 22:00, <code>report</code> at 08:00: launchd on macOS, a marked crontab block on Linux.",
+        "Idempotent; logs go to <code>brains/.local/</code>. Without a flag, <code>cron</code> only prints samples."],
+      changes: ["+ 3 scheduled jobs", "~ morning report and nightly review arrive on their own"],
+      m: { c: 7, t: 10, s: 1, j: 3 },
+      show: ["st0", "st1", "st2", "st3", "eS0", "eS1", "eS2", "leader", "eS3", "owner", "eRC", "clock", "eClk"], hot: ["clock"],
+      packets: [{ e: "eClk", t: "patrol" }],
+      co: [{ at: [690, 57, 80], text: "15 min · 22:00 · 08:00", kind: "good", dx: -70, rise: 30 }] },
+  ],
+};
+
+/* ---------------- atlas binder: 8 views, hash routes, one shared panel + timeline */
+const VIEWS = [RUNTIME, CARD, LOOP, STATES, ROUTING, HOOKS, TOKENS, INSTALL];
+const $ = (id) => document.getElementById(id);
+const tabs = $("tabs"), scenes = $("scenes"), panel = $("panel"), stepsOl = $("steps"), prevB = $("prev"), nextB = $("next");
+tabs.innerHTML = VIEWS.map((v, i) => `<li><a href="#${v.id}"><b>${i + 1}</b>${IsoKit.esc(v.tab)}</a></li>`).join("");
+VIEWS.forEach((v) => {
+  const svg = document.createElementNS(NS, "svg");
+  svg.setAttribute("class", "scene"); svg.setAttribute("role", "img"); svg.setAttribute("aria-labelledby", "t-" + v.id);
+  svg.setAttribute("viewBox", "0 0 900 520"); svg.style.display = "none";
+  const t = document.createElementNS(NS, "title"); t.id = "t-" + v.id; t.textContent = "Isometric diagram: " + v.title; svg.appendChild(t);
+  scenes.appendChild(svg); v.svg = svg; v.cur = 0;
+});
+let V = null, updateMetrics = null;
+function build(v) {
+  if (v.kit) return;
+  v.kit = IsoKit.stage(v.svg, { origin: [0, 0], scale: 1, mode: "iso" });
+  v.kit.packetTypes(PKT);
+  v.build(v.kit);
+  const b = v.svg.getBBox(), top = 64;
+  v.svg.setAttribute("viewBox", `${(b.x - 12).toFixed(0)} ${(b.y - top).toFixed(0)} ${(b.width + 24).toFixed(0)} ${(b.height + top + 12).toFixed(0)}`);
+  const used = new Set(); v.steps.forEach((s) => (s.packets || []).forEach((p) => used.add(p.t)));
+  v.types = Object.keys(PKT).filter((t) => used.has(t));
+  v.hasGates = !!v.svg.querySelector(".gate");
+}
+function show(id) {
+  const v = VIEWS.find((x) => x.id === id) || VIEWS[0];
+  if (V && V !== v) { V.kit.setPackets([]); V.svg.style.display = "none"; }
+  V = v; v.svg.style.display = "";
+  build(v);
+  tabs.querySelectorAll("a").forEach((a) => { if (a.getAttribute("href") === "#" + v.id) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
+  $("vTitle").textContent = v.title; $("vIntro").textContent = v.intro;
+  document.title = "AgiAgentKit Atlas · " + v.tab;
+  updateMetrics = v.metrics.length ? IsoKit.metricsRow($("metrics"), v.metrics) : null;
+  const lg = $("legend"); v.kit.legend(lg, v.types);
+  if (v.hasGates) lg.insertAdjacentHTML("beforeend", '<span><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1l6 2.5v4.5c0 3.5-3 5.8-6 7-3-1.2-6-3.5-6-7V3.5z" style="fill:var(--n-gate)"/></svg>hook gate</span>');
+  stepsOl.innerHTML = v.steps.map((s, i) => `<li><button type="button" data-i="${i}"><b>${String(i + 1).padStart(2, "0")}</b>${IsoKit.esc(s.short)}</button></li>`).join("");
+  render(v.cur);
+}
+function render(i) {
+  const v = V, k = v.kit;
+  v.cur = Math.max(0, Math.min(v.steps.length - 1, i));
+  const s = v.steps[v.cur], sh = new Set(s.show || []), gh = new Set(s.ghost || []), hot = new Set(s.hot || []);
+  v.svg.querySelectorAll("[data-node]").forEach((n) => {
+    const id = n.dataset.node, inner = n.parentElement && n.parentElement.closest("[data-node]");
+    if (inner) { n.classList.remove("off", "ghost"); n.classList.toggle("hot", hot.has(id)); return; } // sub-parts follow their parent
+    n.classList.toggle("off", !sh.has(id) && !gh.has(id));
+    n.classList.toggle("ghost", gh.has(id));
+    n.classList.toggle("hot", hot.has(id));
+  });
+  v.svg.querySelectorAll(".edge").forEach((e) => {
+    const feeds = (e.dataset.feeds || "").split(" ").filter(Boolean);
+    e.classList.toggle("hot", hot.has(e.dataset.node) || (sh.has(e.dataset.node) && feeds.some((f) => hot.has(f))));
+  });
+  k.setPackets(s.packets || []);
+  k.layers.co.replaceChildren();
+  for (const c of s.co || []) k.callout(k.layers.co, c.at, c.text, { kind: c.kind || "", dx: c.dx || 0, rise: c.rise ?? 34 });
+  const mark = (t) => (/^[+−~-]\s/.test(t) ? ` class="ch-${{ "+": "add", "-": "del", "−": "del", "~": "mod" }[t[0]]}"` : "");
+  panel.innerHTML = `<div class="num">${IsoKit.esc(v.tab.toUpperCase())} · STEP ${v.cur + 1} / ${v.steps.length}</div><h3 class="t">${IsoKit.esc(s.title)}</h3>` +
+    s.body.map((p) => `<p>${p}</p>`).join("") +
+    `<h4>What changed</h4><ul>${s.changes.map((c) => `<li${mark(c)}>${IsoKit.esc(c)}</li>`).join("")}</ul>`;
+  if (updateMetrics) updateMetrics(s.m, v.cur > 0 ? v.steps[v.cur - 1].m : null, s.mNote || {});
+  stepsOl.querySelectorAll("button").forEach((b, j) => {
+    b.classList.toggle("done", j < v.cur);
+    if (j === v.cur) b.setAttribute("aria-current", "step"); else b.removeAttribute("aria-current");
+  });
+  prevB.disabled = v.cur === 0; nextB.disabled = v.cur === v.steps.length - 1;
+}
+prevB.addEventListener("click", () => render(V.cur - 1));
+nextB.addEventListener("click", () => render(V.cur + 1));
+stepsOl.addEventListener("click", (e) => { const b = e.target.closest("button[data-i]"); if (b) render(+b.dataset.i); });
+document.addEventListener("keydown", (e) => {
+  if (e.altKey || e.ctrlKey || e.metaKey || (e.target.closest && e.target.closest("input, textarea, select"))) return;
+  const map = { ArrowRight: V.cur + 1, ArrowLeft: V.cur - 1, Home: 0, End: V.steps.length - 1 };
+  if (e.key in map) { e.preventDefault(); render(map[e.key]); }
+});
+const route = () => { const [id, n] = (location.hash || "").slice(1).split("/"); const v = VIEWS.find((x) => x.id === id); if (v && +n > 0) v.cur = +n - 1; show(id); };
+window.addEventListener("hashchange", route);
+route();
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => render(V.cur));
+})();
+</script>
