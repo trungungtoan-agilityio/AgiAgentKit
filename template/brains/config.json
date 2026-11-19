@@ -3,6 +3,7 @@
   "integration_branch": "main",
   "patrol": {
     "waiting_min": 5,
-    "stuck_min": 20
+    "stuck_min": 20,
+    "idle_close_min": 30
   }
 }
