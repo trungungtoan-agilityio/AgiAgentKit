@@ -1,67 +1,76 @@
-# Benchmark: baseline và superadvisor
+# Benchmark: baseline vs superadvisor
 
-So sánh hai cách làm cùng 6 thẻ của `demo-app/BACKLOG.md` và in bảng cho buổi talk.
+English · [Tiếng Việt](README.vi.md)
 
-| Mode | Cách chạy |
-|------|-----------|
-| `baseline` | Một session headless, không plugin, không rules, model `claude-opus-5-5`. Prompt = nội dung thẻ. |
-| `superadvisor` | Project đã `superadvisor init`, nạp `--plugin-dir plugin/`, session chính `claude-sonnet-5-5` làm leader: tự xác định cỡ thẻ, giao việc cho `builder`/`tester`/`debugger`, chạy một lượt `reviewer` với thẻ M/L (theo `.claude/rules/workflow.md`). Cùng nội dung thẻ. |
+Compares two ways of doing the same 6 cards from `demo-app/BACKLOG.md` and prints a table for the talk.
 
-## Cảnh báo chi phí
+| Mode | How it runs |
+|------|-------------|
+| `baseline` | One headless session, no plugin, no rules, model `claude-opus-5-5`. Prompt = the card text. |
+| `superadvisor` | Project set up with `superadvisor init`, loaded with `--plugin-dir plugin/`, main session `claude-sonnet-5-5` acting as leader: it sizes the card itself, delegates to `builder`/`tester`/`debugger`, and runs one `reviewer` round for M/L cards (per `.claude/rules/workflow.md`). Same card text. |
 
-Mỗi lượt chạy là một session Claude Code thật và tốn token thật (thẻ L chạy opus có thể tốn vài USD). Chạy thử trước
-với `--dry-run` (không gọi `claude`, không ghi gì), rồi bắt đầu từ một thẻ, một lượt. `all --runs 3` cho hai mode là
-36 session.
+## Cost warning
 
-## Chạy
+Every run is a real Claude Code session and spends real tokens (an L card on opus can cost a few USD). Try it first
+with `--dry-run` (does not call `claude`, writes nothing), then start with one card and one run. `all --runs 3` for
+both modes is 36 sessions.
+
+## Running
 
 ```
 bench/run.sh <baseline|superadvisor> <C1..C6|all> [--runs N] [--out <dir>] [--dry-run]
-bench/report.sh <out-dir>          # in bảng Markdown từ <out-dir>/results.jsonl
+bench/report.sh <out-dir>          # prints a Markdown table from <out-dir>/results.jsonl
 ```
 
-Ví dụ: `bench/run.sh baseline C1 --dry-run`, rồi `bench/run.sh superadvisor all --runs 3 --out bench/out/talk` và
-`bench/run.sh baseline all --runs 3 --out bench/out/talk` (cùng `--out` để report so sánh được hai mode).
-Cần bash 3.2+, `jq`, `git`, `node`/`npm`, `perl`, `claude` đã đăng nhập. Kiểm công cụ: `bash tests/bench/dry-run.sh`.
+Example: `bench/run.sh baseline C1 --dry-run`, then `bench/run.sh superadvisor all --runs 3 --out bench/out/talk` and
+`bench/run.sh baseline all --runs 3 --out bench/out/talk` (the same `--out` so the report can compare both modes).
+Needs bash 3.2+, `jq`, `git`, `node`/`npm`, `perl`, and a logged-in `claude`. Check the tooling with
+`bash tests/bench/dry-run.sh`.
 
-Biến môi trường: `BENCH_TIMEOUT` (giây, mặc định 900), `BENCH_BASELINE_MODEL`, `BENCH_SUPERADVISOR_MODEL`,
-`BENCH_SETTING_SOURCES` (mặc định `project,local`: không nạp cài đặt/CLAUDE.md/plugin cấp user để hai mode công bằng;
-đặt rỗng để dùng mặc định của Claude Code), `BENCH_KEEP=1` (giữ thư mục tạm), `CLAUDE_BIN`.
+Environment variables: `BENCH_TIMEOUT` (seconds, default 900), `BENCH_BASELINE_MODEL`, `BENCH_SUPERADVISOR_MODEL`,
+`BENCH_SETTING_SOURCES` (default `project,local`: does not load user-level settings/CLAUDE.md/plugins, so both modes
+are fair; set it empty to use Claude Code's default), `BENCH_KEEP=1` (keep the temp folder), `CLAUDE_BIN`.
 
-Mỗi lượt: chép `demo-app/` (không `node_modules`, `.answers/`, `BACKLOG.md`) vào repo git tạm, `npm ci`, commit; với
-`superadvisor` thêm `bin/superadvisor init` và commit; chạy `claude -p ... --output-format json --permission-mode acceptEdits
---allowedTools <danh sách>`; sau khi agent xong mới chép `bench/acceptance/<thẻ>.test.ts` vào `tests/` rồi
-`npx vitest run tests/`. Chỉ ghi vào thư mục tạm và `<out>` (mặc định `bench/out/<timestamp>/`, đã gitignore).
-`<out>/raw/<mode>-<thẻ>-<n>/` giữ JSON gốc, log, `changes.patch` (diff agent tạo ra) để xem lại.
+Each run: copies `demo-app/` (without `node_modules`, `.answers/`, `BACKLOG.md`) into a temp git repo, runs `npm ci`,
+commits; for `superadvisor` it also runs `bin/superadvisor init` and commits; runs `claude -p ... --output-format json
+--permission-mode acceptEdits --allowedTools <list>`; only after the agent finishes does it copy
+`bench/acceptance/<card>.test.ts` into `tests/` and run `npx vitest run tests/`. It writes only to the temp folder and
+to `<out>` (default `bench/out/<timestamp>/`, git-ignored). `<out>/raw/<mode>-<card>-<n>/` keeps the raw JSON, logs
+and `changes.patch` (the diff the agent produced) for later review.
 
-## Đo cái gì
+## What is measured
 
-- **Độ chính xác**: tất cả test chấp nhận của thẻ xanh VÀ toàn bộ `tests/` còn lại xanh. Test chấp nhận ẩn với agent.
-  Với C6 test chỉ kiểm hành vi; "sửa tận gốc, không vá triệu chứng" và lời giải thích nguyên nhân phải chấm tay theo
-  `demo-app/.answers/C6.md` bằng `changes.patch` và báo cáo cuối của agent (chưa có trong `results.jsonl`).
-- **Tối ưu**: `total_cost_usd`, token (`modelUsage` theo từng model; thiếu thì `usage`), số lượt, thời gian. Với `superadvisor`,
-  `kit_stats` (từ hook + `plugin/scripts/kit-stats.sh`) tách token session chính và subagent theo model, kèm số lần gọi
-  agent của kit (`delegations`, 0 nghĩa là leader không giao việc).
-- **Tính dùng được**: số lần cần người giúp. Chế độ headless KHÔNG đo được (không có người trong vòng lặp). Cột gần nhất
-  là `status` (timeout/lỗi) và `delegations`. Để đo thật, chạy demo leader trực tiếp và đếm số prompt người gõ.
+- **Correctness**: all of the card's acceptance tests pass AND all other `tests/` pass. Acceptance tests are hidden
+  from the agent. For C6 the tests only check behaviour; "fix the root cause, not the symptom" and the explanation of
+  the cause must be graded by hand against `demo-app/.answers/C6.md`, using `changes.patch` and the agent's final
+  report (not yet in `results.jsonl`).
+- **Efficiency**: `total_cost_usd`, tokens (`modelUsage` per model; `usage` when missing), number of turns, wall time.
+  For `superadvisor`, `kit_stats` (from the hooks + `plugin/scripts/kit-stats.sh`) splits main-session and subagent
+  tokens per model, plus the number of kit agent calls (`delegations`; 0 means the leader did not delegate).
+- **Usability**: how often a human had to help. Headless mode CANNOT measure this (there is no human in the loop). The
+  closest columns are `status` (timeout/error) and `delegations`. To measure it for real, run the leader demo live and
+  count the prompts a human typed.
 
-Đo được (Claude Code JSON, Vitest): thành công, chi phí, token, lượt, thời gian. Ước tính: `kit_est_cost_usd` theo bảng
-giá mặc định trong `kit-stats.sh` (ghi đè bằng `.claude/metrics/pricing.json`); đừng so trực tiếp với `total_cost_usd`.
+Measured (Claude Code JSON, Vitest): success, cost, tokens, turns, time. Estimated: `kit_est_cost_usd` from the default
+price table in `kit-stats.sh` (override with `.claude/metrics/pricing.json`); do not compare it directly with
+`total_cost_usd`.
 
-## Giả định
+## Assumptions
 
-- Tên API khi BACKLOG để ngỏ (test chỉ dùng những tên sau; đổi tên sẽ làm test đỏ):
-  - C1: `lateFeeCents(dueAt, returnedAt)`, `FEE_PER_DAY_CENTS` (25) trong `src/fees.ts`.
-  - C2: mã lỗi `ALREADY_ON_LOAN`; đọc loan qua `listLoans(memberId)`.
-  - C3: `reserve(bookId, memberId)`; loan mới của người đặt đọc qua `listLoans(memberId)` (`borrowedAt` = thời điểm
-    trả, hạn 14 ngày); thứ tự FIFO được kiểm qua các lần trả liên tiếp. Không kiểm hành vi của người bị bỏ qua sau đó.
-  - C4: `new Library({ maxLoansPerMember })`, `addMember(id, name, { maxLoans })`, vượt giới hạn vẫn là `LIMIT_REACHED`,
-    giá trị không hợp lệ ném `Error` (không cần là `LibraryError`).
-  - C5: `src/dates.ts` export `MS_PER_DAY`, `addDays(date, n)`, `diffMs(a, b)` (dấu của `diffMs` không kiểm); phải có
-    `tests/dates.test.ts`; `library.ts`/`fees.ts` import từ `./dates`. Test hành vi tương thích lỗi cũ (trả trễ đúng 1
-    ngày vẫn là 50 cent) vì đây là refactor thuần.
-  - C6: loan trả trễ không còn trong `listOverdue`; kèm các test không-hồi-quy.
-- Mỗi thẻ chạy độc lập trên bản `demo-app` gốc (không cộng dồn các thẻ).
-- Cờ `--setting-sources`, `--plugin-dir`, `--allowedTools` và tên model theo bản Claude Code hiện hành; nếu bản của bạn
-  khác, sửa đầu `bench/run.sh`. Danh sách công cụ cho phép giới hạn Bash ở `npm/npx/git/node` và vài lệnh đọc.
-- Số run ít (1-3) thì `± độ lệch` chỉ mang tính tham khảo; nói rõ N khi trình bày.
+- API names where the BACKLOG leaves them open (the tests use only these names; renaming them turns tests red):
+  - C1: `lateFeeCents(dueAt, returnedAt)`, `FEE_PER_DAY_CENTS` (25) in `src/fees.ts`.
+  - C2: error code `ALREADY_ON_LOAN`; loans read through `listLoans(memberId)`.
+  - C3: `reserve(bookId, memberId)`; the reserver's new loan is read through `listLoans(memberId)` (`borrowedAt` = the
+    return time, 14-day due date); FIFO order is checked through successive returns. The behaviour of a member who is
+    skipped afterwards is not checked.
+  - C4: `new Library({ maxLoansPerMember })`, `addMember(id, name, { maxLoans })`, going over the limit is still
+    `LIMIT_REACHED`, invalid values throw `Error` (not necessarily `LibraryError`).
+  - C5: `src/dates.ts` exports `MS_PER_DAY`, `addDays(date, n)`, `diffMs(a, b)` (the sign of `diffMs` is not
+    checked); `tests/dates.test.ts` must exist; `library.ts`/`fees.ts` import from `./dates`. Behaviour tests stay
+    compatible with the old bug (returning exactly 1 day late is still 50 cents) because this is a pure refactor.
+  - C6: a loan returned late is no longer in `listOverdue`; plus non-regression tests.
+- Each card runs on its own against the original `demo-app` (cards do not accumulate).
+- The flags `--setting-sources`, `--plugin-dir`, `--allowedTools` and the model names follow the current Claude Code
+  release; if yours differs, edit the top of `bench/run.sh`. The allowed-tools list limits Bash to `npm/npx/git/node`
+  and a few read commands.
+- With few runs (1-3), `± deviation` is only indicative; state N when presenting.

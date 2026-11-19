@@ -60,10 +60,20 @@ Mở session leader (`tmux -L sa attach -t YOUR-PROJECT-LEAD`, hoặc Remote Con
 | `reviewer` | Opus | Review chỉ đọc một lượt trước PR |
 
 Ngưỡng hook, số đo và mọi lệnh CLI: [docs/reference.md](docs/reference.md). Thiết kế:
-[docs/architecture.md](docs/architecture.md).
+[docs/architecture.vi.md](docs/architecture.vi.md).
 
 Slide buổi trình bày tại Agility IO: [PDF](docs/talk/Session-Superadvisor-AgilityIO.pdf) ·
 [PowerPoint](docs/talk/Session-Superadvisor-AgilityIO.pptx).
+
+## Tài liệu
+
+- [Hướng dẫn cài đặt](docs/INSTALL.md) (tiếng Anh)
+- [Kiến trúc](docs/architecture.vi.md)
+- [Vòng đời một thẻ](docs/lifecycle.md) (tiếng Anh)
+- [FAQ](docs/faq.md) (tiếng Anh)
+- [Tham chiếu](docs/reference.md) (tiếng Anh)
+- [Trang giải thích một trang](docs/explainer.html) (tiếng Anh, mở file bằng trình duyệt)
+- [Benchmark](bench/README.vi.md)
 
 ## Chạy demo
 
@@ -83,7 +93,7 @@ cp -R ~/AgiAgentKit/demo-app ~/demo-library && cd ~/demo-library && git init -q 
 ```
 
 Theo dõi bằng `superadvisor status`, bắt lane kẹt bằng `superadvisor patrol`, cuối ngày xem `superadvisor report`.
-So sánh có và không có leader: [bench/README.md](bench/README.md).
+So sánh có và không có leader: [bench/README.vi.md](bench/README.vi.md).
 
 ## Lưu ý
 
