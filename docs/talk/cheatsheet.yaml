@@ -12,6 +12,50 @@ blocks:
     description: Lấy từ docs/reference.md. Chạy từ trong project (dùng git top-level của thư mục hiện tại, hoặc SA_PROJECT).
 
   - type: section
+    title: Bản đồ lệnh
+    blocks:
+      - type: file-tree
+        title: superadvisor và các lệnh con
+        items:
+          - { path: superadvisor/init, note: "Cài template vào project, không ghi đè" }
+          - { path: superadvisor/up, note: "Mở leader <PROJECT>-LEAD" }
+          - { path: superadvisor/lane/open, note: "Worktree, nhánh lane/<name>, phiên tmux" }
+          - { path: superadvisor/lane/close, note: "Dừng lane; --rm-worktree khi đã merge" }
+          - { path: superadvisor/status, note: "BUSY, IDLE, WAITING, DEAD" }
+          - { path: superadvisor/patrol, note: "status + patrol.log + cờ kẹt" }
+          - { path: superadvisor/patrol --clean, note: "Liệt kê lane rỗi đã merge" }
+          - { path: superadvisor/patrol --clean --apply, note: "Đóng chúng, xoá worktree" }
+          - { path: superadvisor/review, note: Review buổi tối chỉ đọc }
+          - { path: superadvisor/report, note: Báo cáo ngắn hằng ngày }
+          - { path: superadvisor/cron, note: In mẫu lịch chạy }
+          - { path: superadvisor/cron --install, note: "Cài launchd hoặc crontab" }
+          - { path: superadvisor/cron --uninstall, note: Gỡ lịch chạy }
+      - type: diagram-panel
+        title: Thứ tự dùng lệnh cho một thẻ
+        spec:
+          meta:
+            title: Một thẻ qua các lệnh
+          nodes:
+            - { id: init, label: init }
+            - { id: up, label: up }
+            - { id: open, label: lane open }
+            - { id: status, label: "status / patrol" }
+            - { id: close, label: lane close }
+            - { id: report, label: report }
+          connections:
+            - { from: init, to: up, label: một lần }
+            - { from: up, to: open, label: leader viết brief }
+            - { from: open, to: status, label: theo dõi }
+            - { from: status, to: close, label: "PR đã merge (M <số PR>)" }
+            - { from: close, to: report, label: cuối ngày }
+      - type: timeline
+        title: "Lịch của cron --install"
+        items:
+          - { when: Mỗi 15 phút, title: "patrol --clean --apply", text: "Gắn cờ kẹt, tự đóng lane IDLE đủ idle_close_min (30), đã merge, sạch, đã push." }
+          - { when: "22:00", title: review, text: "Review chỉ đọc, lưu vào `brains/.local/reviews/<date>.md`." }
+          - { when: "08:00", title: report, text: "Lane, cờ kẹt, commit, chi phí ước tính." }
+
+  - type: section
     title: Vòng việc hằng ngày
     blocks:
       - type: code

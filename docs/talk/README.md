@@ -1,21 +1,21 @@
-# Talk documents
+# Tài liệu buổi nói chuyện
 
-Supplementary pages for the Superadvisor talk (`Session-Superadvisor-AgilityIO.pdf` / `.pptx`). The pages are in
-Vietnamese; open the HTML files in a browser, they make no network request.
+Các trang bổ sung cho buổi nói chuyện Superadvisor (`Session-Superadvisor-AgilityIO.pdf` / `.pptx`). Mở file HTML bằng
+trình duyệt; trang không gửi request mạng nào.
 
-| Page | Spec | Content |
-|------|------|---------|
-| [handout.html](handout.html) | `handout.yaml` | One-page companion: the problem, leader/lanes/brains, one card's lifecycle, benchmark numbers |
-| [qa.html](qa.html) | `qa.yaml` | Q&A for a team adopting the kit: FAQ answers, install checklist, known limits |
-| [cheatsheet.html](cheatsheet.html) | `cheatsheet.yaml` | `superadvisor` commands, environment variables, hooks, brains paths |
+| Trang | Spec | Nội dung |
+|-------|------|----------|
+| [handout.html](handout.html) | `handout.yaml` | Tài liệu đi kèm (tiếng Anh): vấn đề, sơ đồ leader/lanes/brains, vòng đời một thẻ, trạng thái lane, lịch cron, biểu đồ benchmark |
+| [qa.html](qa.html) | `qa.yaml` | Hỏi đáp cho đội áp dụng kit: câu trả lời từ FAQ, luồng và checklist cài đặt, cây quyết định khi lane kẹt, giới hạn đã biết |
+| [cheatsheet.html](cheatsheet.html) | `cheatsheet.yaml` | Bản đồ lệnh `superadvisor`, lịch cron, biến môi trường, hook, đường dẫn brains |
 
-Facts come from the slides, `docs/lifecycle.md`, `docs/faq.md`, `docs/reference.md`, `docs/INSTALL.md` and
-`bench/results.md`. Edit the YAML spec, not the HTML.
+Dữ kiện lấy từ slide, `docs/lifecycle.md`, `docs/faq.md`, `docs/reference.md`, `docs/INSTALL.md` và
+`bench/results.md`. Sửa file YAML, không sửa HTML.
 
-## Regenerate
+## Tạo lại trang
 
-The pages are compiled with the `ak-render` skill (`plugin/skills/ak-render/`), pinned to `@bestagentkits/render`
-0.3.0. From the repository root:
+Các trang được biên dịch bằng skill `ak-render` (`plugin/skills/ak-render/`), pin vào `@bestagentkits/render` 0.3.0.
+Chạy từ thư mục gốc của repo:
 
 ```bash
 npx -y @bestagentkits/render@0.3.0 validate docs/talk/handout.yaml --json
@@ -25,4 +25,5 @@ npx -y @bestagentkits/render@0.3.0 validate docs/talk/handout.yaml --json
 npx -y @bestagentkits/render docs/talk/handout.yaml --out docs/talk/handout.html
 ```
 
-Do the same for `qa.yaml` and `cheatsheet.yaml`.
+Làm tương tự với `qa.yaml` và `cheatsheet.yaml`. Giữ theme `paper-ink` hoặc `swiss-clean`: font nhúng của vài theme
+khác chứa chuỗi bị bộ quét từ cấm bắt nhầm.
