@@ -28,29 +28,10 @@ blocks:
     blocks:
       - type: text
         text: The leader assigns work, unblocks lanes and merges within the limits you set. You decide product, production and permissions.
-      - type: diagram-panel
-        title: Who talks to whom
+      - type: image
+        src: img/architecture.svg
+        alt: "Architecture: the owner talks to the leader over Remote Control; brains alert the leader when a lane is stuck; the leader briefs three lanes (sonnet, sonnet + review, opus); hooks see every tool call and write token metrics for kit-stats."
         caption: "Owner drives the leader from the phone over Remote Control. The leader opens lanes with `superadvisor lane open`; hooks watch every tool call and log token metrics; brains patrol and report back to the leader."
-        spec:
-          meta:
-            title: Leader, lanes, brains and guardrails
-          nodes:
-            - { id: owner, label: Owner (on the phone) }
-            - { id: leader, label: "Leader session (tmux + Remote Control)" }
-            - { id: lane-small, label: "Lane: small (sonnet)" }
-            - { id: lane-medium, label: "Lane: medium (sonnet + review)" }
-            - { id: lane-hard, label: "Lane: hard bug (opus)" }
-            - { id: hooks, label: Hooks (every tool call) }
-            - { id: metrics, label: Token metrics (kit-stats) }
-            - { id: brains, label: "Brains (patrol, reports)" }
-          connections:
-            - { from: owner, to: leader, label: Remote Control }
-            - { from: leader, to: lane-small, label: brief }
-            - { from: leader, to: lane-medium, label: brief }
-            - { from: leader, to: lane-hard, label: brief }
-            - { from: lane-medium, to: hooks, label: every tool call in every lane }
-            - { from: hooks, to: metrics, label: tokens }
-            - { from: brains, to: leader, label: "stuck? alert" }
       - type: table
         title: Four roles, each knows what is not its job
         columns: [Role, Does, Never does]
