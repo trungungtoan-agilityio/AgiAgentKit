@@ -1,0 +1,107 @@
+version: 1
+meta:
+  title: Superadvisor — bảng tra lệnh
+  description: Bảng tra lệnh superadvisor, biến môi trường, hook và đường dẫn brains, lấy từ docs/reference.md.
+  locale: vi
+theme:
+  preset: swiss-clean
+blocks:
+  - type: hero
+    eyebrow: Cheat sheet
+    title: Lệnh superadvisor
+    description: Lấy từ docs/reference.md. Chạy từ trong project (dùng git top-level của thư mục hiện tại, hoặc SA_PROJECT).
+
+  - type: section
+    title: Vòng việc hằng ngày
+    blocks:
+      - type: code
+        language: bash
+        title: Cài một lần, khởi động leader
+        text: |
+          superadvisor init <project>
+          superadvisor up [<project>] [--dry-run]
+      - type: code
+        language: bash
+        title: Mở và đóng lane
+        text: |
+          superadvisor lane open <name> --brief <file> [--model <id>] [--worktree <path>] [--dry-run]
+          superadvisor lane close <name> [--rm-worktree]
+      - type: code
+        language: bash
+        title: Theo dõi và dọn dẹp
+        text: |
+          superadvisor status
+          superadvisor patrol
+          superadvisor patrol --clean
+          superadvisor patrol --clean --apply
+      - type: code
+        language: bash
+        title: Báo cáo và lịch chạy
+        text: |
+          superadvisor review
+          superadvisor report
+          superadvisor cron
+          superadvisor cron --install [--project <p>] [--dry-run]
+          superadvisor cron --uninstall
+
+  - type: section
+    title: Mỗi lệnh làm gì
+    blocks:
+      - type: table
+        columns: [Lệnh, Làm gì]
+        rows:
+          - ["init <project>", "Chép template (rules, brains/, một khối CLAUDE.md) vào project. Không bao giờ ghi đè."]
+          - ["up [<project>] [--dry-run]", "Mở leader <PROJECT>-LEAD trong tmux với Remote Control và auto mode."]
+          - ["lane open <name> --brief <file>", "Mở lane: worktree, nhánh lane/<name>, phiên tmux có KIT_LANE=1. Tuỳ chọn --model, --worktree, --dry-run."]
+          - ["lane close <name> [--rm-worktree]", "Dừng lane. Chỉ xoá worktree khi nhánh đã merge (PR squash-merge có head là đỉnh nhánh cũng tính)."]
+          - ["status", "Mỗi phiên một dòng: BUSY, IDLE, WAITING hoặc DEAD, và số phút không đổi."]
+          - ["patrol", "Như status, thêm một dòng vào patrol.log và cờ kẹt cho lane quá ngưỡng."]
+          - ["patrol --clean", "Liệt kê lane IDLE đủ idle_close_min, đã merge, worktree sạch, không có commit chưa push."]
+          - ["patrol --clean --apply", "Đóng các lane đó và xoá worktree (cả file bị git-ignore bên trong)."]
+          - ["review", "Review buổi tối chỉ đọc, lưu vào brains/.local/reviews/<date>.md: PR đang mở (cần gh), lane, cờ kẹt hôm nay, commit hôm nay trên nhánh tích hợp, chi phí ước tính."]
+          - ["report", "Báo cáo ngắn hằng ngày: lane, cờ kẹt, commit, chi phí ước tính."]
+          - ["cron", "Không cờ: in mẫu. Không cài gì."]
+          - ["cron --install", "patrol --clean --apply mỗi 15 phút, review lúc 22:00, report lúc 08:00 (launchd trên macOS, khối crontab có đánh dấu trên Linux). Idempotent. Log vào brains/.local/."]
+
+  - type: section
+    title: Biến môi trường
+    blocks:
+      - type: table
+        columns: [Biến, Mặc định, Ý nghĩa]
+        rows:
+          - [SA_PROJECT, thư mục hiện tại, Thư mục project]
+          - [SA_SOCKET, sa, "Tên socket tmux, để phiên của kit tách khỏi phiên của bạn"]
+          - ["CLAUDE_BIN, TMUX_BIN, GH_BIN", "claude, tmux, gh", Binary dùng để chạy]
+          - ["SA_LAUNCHD_DIR, SA_LAUNCHCTL_BIN, SA_CRONTAB_BIN, SA_CRON_MODE", "~/Library/LaunchAgents, launchctl, crontab, theo OS", "Nơi cron --install ghi (test trỏ vào bản giả)"]
+
+  - type: section
+    title: Hook và ngưỡng
+    blocks:
+      - type: table
+        columns: [Hook, Chặn, Ngưỡng, Chỉnh bằng]
+        rows:
+          - [turn-guard, "Lượt builder/tester chạy quá lâu (Read, Grep vẫn qua)", "Cảnh báo 60 và 90 lần gọi tool, chặn từ 130", "TURN_GUARD_WARN, TURN_GUARD_WARN2, TURN_GUARD_DENY, TURN_GUARD_OFF=1"]
+          - [test-budget, "Chạy cả bộ test (npm test, vitest, pytest, go test ./... không có file hay filter)", "File, thư mục, -t, -k hoặc --changed thì qua", "Thêm FULL_SUITE_OK=1 vào lệnh"]
+          - [agent-routing, "Gọi agent có truyền model, hoặc general-purpose / không có subagent_type", Mọi lần gọi, "Sửa plugin/hooks/agent-routing.sh"]
+          - [owner-guard, "Chỉ trong lane: gh pr merge, push vào main/master/dev, ghi .claude/settings*.json", Mọi lần gọi trong lane, "KIT_LANE (superadvisor đặt)"]
+          - [metrics-subagent, "Không chặn; ghi mỗi lượt subagent", Mỗi lần subagent dừng, "—"]
+          - [metrics-main, "Không chặn; ghi phiên chính theo model", Mỗi Stop, "KIT_METRICS_MAIN_MAX_FIRST_BYTES (mặc định 20 MB)"]
+
+  - type: section
+    title: Scorecard và brains
+    blocks:
+      - type: code
+        language: bash
+        title: Chi phí và token
+        text: |
+          plugin/scripts/kit-stats.sh
+          plugin/scripts/token-watch.sh --hours 24
+      - type: table
+        columns: [Đường dẫn, Nội dung]
+        rows:
+          - [brains/lead.md, "Leader tự làm gì, hỏi bạn gì, không bao giờ làm gì"]
+          - [brains/config.json, "integration_branch, ngưỡng patrol (waiting_min, stuck_min, idle_close_min)"]
+          - [brains/decisions.md, "Quyết định đã có, để leader không hỏi hai lần"]
+          - [brains/directives/, Chỉ dẫn thường trực từ bạn]
+          - [brains/inbox/, Việc mới thả vào cho leader]
+          - [brains/.local/, "Dữ liệu runtime: brief, patrol log, review buổi tối, log cron. Bị git-ignore."]

@@ -12,6 +12,8 @@ A minimal Claude Code plugin for running a leader session that coordinates sever
   token usage of subagents and the main session to `.claude/metrics/events.jsonl`.
 - `scripts/`: `kit-stats.sh` (scorecard by model, agent and main session) and `token-watch.sh` (one-line check).
 - `skills/lead/`: the leader loop, used together with the `superadvisor` CLI from the parent repository.
+- `skills/ak-render/`: vendored third-party skill (MIT, see its `SOURCE.md`) that turns a short YAML spec into one
+  offline HTML page with the `@bestagentkits/render` CLI.
 
 Requires `jq` for the hooks and scripts; without it the guard hooks let every call through.
 
