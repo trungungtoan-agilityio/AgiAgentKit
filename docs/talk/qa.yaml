@@ -1,0 +1,159 @@
+version: 1
+meta:
+  title: Superadvisor — hỏi đáp khi đội khác áp dụng kit
+  description: Câu hỏi hay gặp và câu trả lời từ docs/faq.md, checklist cài đặt từ docs/INSTALL.md, và các giới hạn đã biết.
+  locale: vi
+theme:
+  preset: paper-ink
+blocks:
+  - type: hero
+    eyebrow: Chuẩn bị thảo luận
+    title: Hỏi đáp khi một đội khác áp dụng AgiAgentKit
+    description: Câu trả lời lấy từ FAQ và hướng dẫn cài đặt của repo; chi tiết lệnh nằm ở bảng tra lệnh.
+
+  - type: section
+    title: Câu hỏi hay gặp
+    blocks:
+      - type: accordion
+        items:
+          - title: Vì sao dùng tmux?
+            text: "Leader và mỗi lane là phiên Claude Code chạy lâu, phải tiếp tục sau khi bạn đóng terminal. tmux cho mỗi phiên một session tách rời để attach rồi rời. Nó cũng cho `superadvisor` đọc màn hình (`capture-pane`) để biết BUSY / IDLE / WAITING, và giữ pane sau khi Claude Code thoát (`remain-on-exit`) để `status` báo DEAD. Mọi thứ chạy trên socket riêng (`tmux -L sa`, đổi bằng `SA_SOCKET`)."
+          - title: Vì sao mỗi lane một git worktree?
+            text: "Các lane chạy cùng lúc. Chung một checkout thì chúng sửa cùng file và đổi nhánh dưới chân nhau. Mỗi lane có `.claude/worktrees/<name>` trên nhánh riêng `lane/<name>` cắt từ nhánh tích hợp: một thẻ là một thư mục, một nhánh, một PR. Metrics ghi vào checkout chính nên xoá worktree không mất gì."
+          - title: Lane bị kẹt thì sao?
+            text: "`superadvisor patrol` gắn cờ: pane chết, hộp hỏi quyền chờ ít nhất `patrol.waiting_min` phút (mặc định 5), hoặc màn hình không đổi ít nhất `patrol.stuck_min` phút (mặc định 20). Patrol chỉ báo, không hành động. Skill `lead` bảo leader xem lane, chuyển hộp hỏi quyền chỉ owner được duyệt cho bạn, hoặc đóng lane, viết brief hẹp hơn và mở lại cùng tên. Kẹt lần hai thì dừng và hỏi bạn."
+          - title: "`owner-guard` có phải ranh giới bảo mật không?"
+            text: "Không. Nó là rào chắn chống lane làm việc của owner theo thói quen, không chống agent có ý xấu. Nó chỉ chạy khi `KIT_LANE=1`, chỉ xem lệnh Bash, Edit, Write, MultiEdit và chỉ các đoạn lệnh trực tiếp. Không có `jq` thì mọi hook cho qua. Muốn ranh giới thật: bảo vệ nhánh tích hợp, bắt buộc review, token quyền nhỏ nhất."
+          - title: Ước tính chi phí sát hoá đơn thật tới đâu?
+            text: "Chỉ là ước tính. `kit-stats.sh` nhân số token hook ghi được với bảng giá theo tầng. Nó không biết gói, chiết khấu hay giá hiện hành, và bỏ sót phiên chạy không có plugin. Đặt giá riêng trong `.claude/metrics/pricing.json`. Muốn số đo thật, so với `total_cost_usd` của Claude Code (benchmark ghi cả hai) hoặc trang billing."
+          - title: Dùng với repo có sẵn thế nào?
+            text: "Chạy `superadvisor init /path/to/repo`. Không ghi đè: file cũ giữ nguyên, `CLAUDE.md` được nối thêm một khối có đánh dấu. Điền các chỗ `<...>` (lệnh test, typecheck, đường dẫn nhạy cảm), đặt `integration_branch` trong `brains/config.json` (ví dụ `dev`), commit vào nhánh đó, cài plugin, rồi `superadvisor up /path/to/repo`."
+          - title: Có chạy trên Linux không?
+            text: "Có. CLI và hook là bash (3.2 trở lên) với `tmux`, `git`, `jq`. `superadvisor cron` in mẫu crontab và mẫu launchd (chỉ macOS). Trên Windows dùng WSL."
+          - title: Leader được merge những gì?
+            text: "Mặc định chỉ PR bạn gọi tên, ví dụ `M 12`, và chỉ trên head đã duyệt; head đổi thì hỏi lại. Tối thiểu: test xanh trên đúng head đó, không còn lỗi High/Critical sau tối đa hai vòng review. Không bao giờ release, deploy, tag, force push, đổi quyền hay xoá dữ liệu không khôi phục được. Sửa `brains/lead.md` để nới hoặc siết. Lane không bao giờ merge được."
+          - title: Dừng mọi thứ thế nào?
+            text: "Một lane: `superadvisor lane close <name>` (giữ worktree). Leader: `tmux -L sa kill-session -t <PROJECT>-LEAD`. Mọi phiên trên socket của kit: `tmux -L sa kill-server`. Nếu đã cài cron hoặc launchd thì gỡ dòng đó."
+          - title: Remote Control khớp vào đâu?
+            text: "Mọi phiên CLI mở đều chạy `claude --remote-control <session name>`. Trong app Claude chọn `<PROJECT>-LEAD` để nói chuyện với leader từ điện thoại. Cần Claude Code đăng nhập claude.ai; không có thì `tmux -L sa attach -t <session>`."
+          - title: Chạy lane không cần plugin được không?
+            text: "CLI không phụ thuộc plugin, chỉ cần bash, tmux, git, jq. Nhưng không có plugin thì không có hook (không `owner-guard`, không ngân sách, không metrics), không agent ghim model, không skill `lead`. Nên dùng plugin."
+          - title: Chỉnh ngưỡng hook ở đâu?
+            text: "`turn-guard` (60, 90, 130 lần gọi tool): `TURN_GUARD_WARN`, `TURN_GUARD_WARN2`, `TURN_GUARD_DENY`, `TURN_GUARD_OFF=1`. `test-budget`: chỉ định file, thư mục hoặc filter, hoặc `FULL_SUITE_OK=1`. Patrol: `patrol.waiting_min`, `patrol.stuck_min` trong `brains/config.json`. Danh sách agent: sửa `plugin/hooks/agent-routing.sh`."
+
+  - type: section
+    title: Checklist cài đặt (khoảng 10 phút)
+    blocks:
+      - type: diagram-panel
+        title: Luồng cài đặt
+        caption: "Mỗi bước trong `docs/INSTALL.md` kết thúc bằng một lệnh kiểm."
+        spec:
+          meta:
+            title: Từ máy trống tới leader chạy
+          nodes:
+            - { id: prereq, label: "Claude Code, git, tmux, jq" }
+            - { id: clone, label: Clone kit về ~/AgiAgentKit }
+            - { id: marketplace, label: claude plugin marketplace add }
+            - { id: plugin, label: claude plugin install }
+            - { id: init, label: superadvisor init }
+            - { id: commit, label: "Điền CLAUDE.md, commit" }
+            - { id: up, label: superadvisor up }
+            - { id: status, label: superadvisor status }
+          connections:
+            - { from: prereq, to: clone, label: "kiểm: --version" }
+            - { from: clone, to: marketplace, label: "kiểm: superadvisor --help" }
+            - { from: marketplace, to: plugin, label: agi-agent-kit@agi-agent-kit }
+            - { from: plugin, to: init, label: "kiểm: 5 agent, hook, skill lead" }
+            - { from: init, to: commit, label: project là git repo }
+            - { from: commit, to: up, label: vào nhánh tích hợp }
+            - { from: up, to: status, label: "kiểm: một dòng cho leader" }
+      - type: checklist
+        items:
+          - text: "Có Claude Code (`claude --version`), git, tmux, jq; Node.js 20+ chỉ cần cho app demo. Windows dùng WSL."
+          - text: "Clone repo AgiAgentKit (về `~/AgiAgentKit`); tuỳ chọn thêm `~/AgiAgentKit/bin` vào PATH — `superadvisor --help` in danh sách lệnh."
+          - text: "Thêm marketplace: claude plugin marketplace add ~/AgiAgentKit"
+          - text: "Cài plugin: claude plugin install agi-agent-kit@agi-agent-kit — kiểm bằng claude plugin details, phải thấy 5 agent, các hook và skill lead."
+          - text: "Project phải là git repo; chạy superadvisor init /path/to/your-project."
+          - text: "Điền chỗ <...> trong CLAUDE.md, kiểm brains/config.json (integration_branch, ngưỡng patrol), commit vào nhánh tích hợp."
+          - text: "Khởi động leader: superadvisor up /path/to/your-project — kiểm bằng superadvisor status, thấy một dòng cho leader."
+          - text: "Giao việc bằng lời; duyệt merge bằng M <số PR>."
+          - text: "Đọc scorecard: ~/AgiAgentKit/plugin/scripts/kit-stats.sh trong project."
+
+  - type: section
+    title: "Cây quyết định: lane bị kẹt thì làm gì"
+    blocks:
+      - type: diagram-panel
+        title: Lane bị patrol gắn cờ KẸT
+        caption: "Patrol chỉ báo, không hành động; leader làm theo skill `lead`. Kẹt lần hai thì dừng và hỏi owner."
+        spec:
+          meta:
+            title: Lane kẹt → làm gì
+          nodes:
+            - { id: flag, label: "patrol gắn cờ KẸT" }
+            - { id: dead, label: "DEAD: pane chết" }
+            - { id: waiting, label: "WAITING ≥ waiting_min (5 phút)" }
+            - { id: nochange, label: "Màn hình không đổi ≥ stuck_min (20 phút)" }
+            - { id: owner-prompt, label: Hộp hỏi quyền chỉ owner duyệt → báo owner }
+            - { id: reopen, label: "Đóng lane, viết brief hẹp hơn, mở lại cùng tên" }
+            - { id: ask, label: Kẹt lần hai → dừng và hỏi owner }
+          connections:
+            - { from: flag, to: dead }
+            - { from: flag, to: waiting }
+            - { from: flag, to: nochange }
+            - { from: waiting, to: owner-prompt, label: quyền của owner }
+            - { from: waiting, to: reopen, label: không phải quyền owner }
+            - { from: dead, to: reopen }
+            - { from: nochange, to: reopen }
+            - { from: reopen, to: ask, label: vẫn kẹt }
+      - type: comparison
+        title: Có plugin và không có plugin
+        left:
+          label: Chỉ CLI superadvisor
+          items:
+            - "Cần bash, tmux, git, jq"
+            - Phiên vẫn chạy được
+            - Không hook (không owner-guard, không ngân sách, không metrics)
+            - Không agent ghim model, không skill lead
+        right:
+          label: CLI + plugin agi-agent-kit
+          items:
+            - 5 agent ghim model theo tầng
+            - "Hook turn-guard, test-budget, agent-routing, owner-guard"
+            - Metrics token vào .claude/metrics/events.jsonl
+            - Skill lead cho vòng lặp của leader
+
+  - type: section
+    title: Giới hạn đã biết
+    blocks:
+      - type: list
+        items:
+          - text: "Hook không phải ranh giới bảo mật: không có `jq` thì mọi hook cho qua; `owner-guard` không soi lệnh bọc trong `bash -c`, script, `gh api` hay ngôn ngữ khác."
+            badge: hook
+          - text: "Quy tắc merge của leader là chỉ dẫn trong `brains/lead.md` và skill `lead`; không hook nào ép leader."
+            badge: leader
+          - text: "Chi phí là ước tính từ bảng giá; bỏ sót phiên không có plugin. Lần Stop đầu của transcript trên 20 MB thì `metrics-main` chỉ đếm từ đó."
+            badge: chi phí
+          - text: "Benchmark N = 1 mỗi thẻ trên app demo nhỏ; độ dao động chưa biết, không đo được số lần người phải can thiệp."
+            badge: bench
+          - text: "Sau squash merge, nhánh lane không còn là tổ tiên của nhánh tích hợp nên `lane close --rm-worktree` giữ worktree; tự `git worktree remove` khi chắc chắn."
+            badge: lane
+          - text: "Remote Control cần Claude Code đăng nhập claude.ai."
+            badge: remote
+
+  - type: section
+    title: Xem thêm
+    blocks:
+      - type: references
+        items:
+          - id: handout
+            title: Tài liệu đi kèm buổi nói chuyện
+            href: handout.html
+          - id: cheatsheet
+            title: Bảng tra lệnh superadvisor
+            href: cheatsheet.html
+          - id: faq
+            title: FAQ đầy đủ (tiếng Anh)
+            href: ../faq.md
+          - id: install
+            title: Hướng dẫn cài đặt (tiếng Anh)
+            href: ../INSTALL.md

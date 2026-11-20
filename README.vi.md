@@ -74,6 +74,7 @@ Slide buổi trình bày tại Agility IO: [PDF](docs/talk/Session-Superadvisor-
 - [Tham chiếu](docs/reference.md) (tiếng Anh)
 - [Trang giải thích một trang](docs/explainer.html) (tiếng Anh, mở file bằng trình duyệt)
 - [Benchmark](bench/README.vi.md)
+- [Tài liệu buổi nói chuyện](docs/talk/README.md): handout, hỏi đáp, bảng tra lệnh (HTML, mở bằng trình duyệt)
 
 ## Chạy demo
 

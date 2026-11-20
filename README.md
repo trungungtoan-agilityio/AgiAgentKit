@@ -89,6 +89,7 @@ Slides from the Agility IO talk: [PDF](docs/talk/Session-Superadvisor-AgilityIO.
 - [One-page explainer](docs/explainer.html) (open the file in a browser)
 - [Step-by-step visual lesson](docs/lesson.html) (open the file in a browser)
 - [Atlas: eight isometric views](docs/atlas.html) (open the file in a browser)
+- [Talk documents](docs/talk/README.md): handout (English), Q&A sheet and CLI cheat sheet (Vietnamese); HTML, open in a browser
 - [Benchmark results](bench/results.md)
 - [Benchmark](bench/README.md)
 

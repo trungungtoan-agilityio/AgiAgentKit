@@ -1,0 +1,273 @@
+version: 1
+meta:
+  title: Superadvisor — talk handout
+  description: One-page companion to the Superadvisor talk — the problem, the leader/lanes/brains architecture, one card's lifecycle and the measured benchmark.
+  locale: en
+theme:
+  preset: paper-ink
+blocks:
+  - type: hero
+    eyebrow: Talk handout · Session Superadvisor
+    title: One leader session runs many Claude Code sessions
+    description: With guardrails and token telemetry built in. You talk to one session; the others report to it.
+
+  - type: section
+    title: The problem
+    blocks:
+      - type: card-grid
+        items:
+          - title: You are the bottleneck
+            text: Every session asks for approval or direction. Step away and everything stops.
+          - title: Stuck sessions go unseen
+            text: A permission prompt open since noon, a lane looping on one error — unnoticed until evening.
+          - title: Long sessions burn tokens
+            text: Each turn re-reads the whole context. The longer the session, the pricier every question.
+
+  - type: section
+    title: Architecture — brains, leader, lanes
+    blocks:
+      - type: text
+        text: The leader assigns work, unblocks lanes and merges within the limits you set. You decide product, production and permissions.
+      - type: diagram-panel
+        title: Who talks to whom
+        caption: "Owner drives the leader from the phone over Remote Control. The leader opens lanes with `superadvisor lane open`; hooks watch every tool call and log token metrics; brains patrol and report back to the leader."
+        spec:
+          meta:
+            title: Leader, lanes, brains and guardrails
+          nodes:
+            - { id: owner, label: Owner (on the phone) }
+            - { id: leader, label: "Leader session (tmux + Remote Control)" }
+            - { id: lane-small, label: "Lane: small (sonnet)" }
+            - { id: lane-medium, label: "Lane: medium (sonnet + review)" }
+            - { id: lane-hard, label: "Lane: hard bug (opus)" }
+            - { id: hooks, label: Hooks (every tool call) }
+            - { id: metrics, label: Token metrics (kit-stats) }
+            - { id: brains, label: "Brains (patrol, reports)" }
+          connections:
+            - { from: owner, to: leader, label: Remote Control }
+            - { from: leader, to: lane-small, label: brief }
+            - { from: leader, to: lane-medium, label: brief }
+            - { from: leader, to: lane-hard, label: brief }
+            - { from: lane-medium, to: hooks, label: every tool call in every lane }
+            - { from: hooks, to: metrics, label: tokens }
+            - { from: brains, to: leader, label: "stuck? alert" }
+      - type: table
+        title: Four roles, each knows what is not its job
+        columns: [Role, Does, Never does]
+        rows:
+          - [Owner, "Decides product; approves merges, production, permissions", Hand-feed work to each lane]
+          - [Leader, "Splits the backlog, writes briefs, opens lanes, unblocks, merges within limits", Write large blocks of code itself]
+          - [Lane, "One card, one worktree, one PR", "Merge or change permissions — the owner-guard hook blocks it"]
+          - [Brains, "15-minute patrol, nightly review, morning report", Become a second chat channel]
+      - type: diagram-panel
+        title: The leader's loop, after every event
+        caption: Never just wait — waiting on review? Give another lane work.
+        spec:
+          meta:
+            title: The leader's loop
+          nodes:
+            - { id: unblock, label: "1. Unblock first" }
+            - { id: merge, label: "2. Merge ready PRs" }
+            - { id: assign, label: "3. Assign idle lanes" }
+            - { id: cleanup, label: "4. Clean up" }
+            - { id: report, label: "5. Report briefly" }
+          connections:
+            - { from: unblock, to: merge, label: "narrower brief, reopen lane" }
+            - { from: merge, to: assign, label: only within owner limits }
+            - { from: assign, to: cleanup, label: two lanes never edit the same files }
+            - { from: cleanup, to: report, label: "close lane, drop merged worktree" }
+      - type: chart
+        kind: donut
+        title: Agent roster by model tier
+        description: Five agents, each pinned to a model in its frontmatter; `agent-routing` rejects model overrides at call time.
+        labels: ["haiku (scout)", "sonnet (builder, tester)", "opus (reviewer, debugger)"]
+        series:
+          - label: Agents
+            values: [1, 2, 2]
+
+  - type: section
+    title: One card, from brief to merge (card C3 of the demo)
+    blocks:
+      - type: diagram-panel
+        title: Sequence of one card
+        spec:
+          meta:
+            title: One card from brief to merge
+          nodes:
+            - { id: init, label: superadvisor init }
+            - { id: up, label: superadvisor up }
+            - { id: brief, label: Leader writes the brief }
+            - { id: lane, label: superadvisor lane open c3 }
+            - { id: pr, label: Lane opens a PR }
+            - { id: approve, label: "Owner says M 12" }
+            - { id: merged, label: Leader merges }
+            - { id: close, label: superadvisor lane close c3 }
+          connections:
+            - { from: init, to: up, label: once per project }
+            - { from: up, to: brief, label: you give it work }
+            - { from: brief, to: lane, label: size M card }
+            - { from: lane, to: pr, label: tests from the brief green }
+            - { from: pr, to: approve, label: report in five lines }
+            - { from: approve, to: merged, label: "same head, no High/Critical" }
+            - { from: merged, to: close, label: "--rm-worktree" }
+      - type: steps
+        items:
+          - title: Set up the project once
+            text: "`superadvisor init ~/demo-library` copies the template (rules, `brains/`, a `CLAUDE.md` block) without overwriting anything."
+          - title: Start the leader
+            text: "`superadvisor up ~/demo-library` starts tmux session `DEMO-LIBRARY-LEAD` on socket `sa`, in auto mode with Remote Control."
+          - title: Give the leader work
+            text: "For example: read BACKLOG.md, size each card, open a lane for C3. The leader writes one brief per M card; size S cards (1–3 files) it does itself."
+          - title: Open the lane
+            text: "`superadvisor lane open c3 --brief /path/to/c3-brief.md` creates worktree `.claude/worktrees/c3`, branch `lane/c3` and session `DEMO-LIBRARY-C3` with `KIT_LANE=1`."
+          - title: Watch
+            text: "`superadvisor status` prints BUSY, IDLE, WAITING or DEAD per session. `superadvisor patrol` flags a prompt waiting ≥ 5 minutes or a screen unchanged ≥ 20 minutes."
+          - title: The PR
+            text: "The lane runs the brief's test command, pushes its branch, opens a PR against the integration branch and stops. It cannot merge."
+          - title: Merge on your word
+            text: "You answer `M 12`. The leader merges only the approved head, with green tests on it and no High/Critical findings after at most two review rounds."
+          - title: Close and report
+            text: "`superadvisor lane close c3 --rm-worktree`, then `superadvisor report`: sessions, stuck flags, today's commits and estimated cost."
+
+  - type: section
+    title: Lane state lifecycle
+    blocks:
+      - type: diagram-panel
+        title: A lane from open to auto-close
+        caption: "DEAD (Claude Code exited) and WAITING (permission prompt) can happen at any point; patrol flags them. `patrol --clean --apply` closes only lanes IDLE for `idle_close_min` (30), merged, clean and pushed."
+        spec:
+          meta:
+            title: Lane states
+          nodes:
+            - { id: open, label: lane open }
+            - { id: busy, label: BUSY }
+            - { id: idle, label: IDLE }
+            - { id: closed, label: closed }
+          connections:
+            - { from: open, to: busy, label: "tmux session starts, KIT_LANE=1" }
+            - { from: busy, to: idle, label: "PR open, lane stops" }
+            - { from: idle, to: closed, label: "patrol --clean --apply" }
+      - type: table
+        title: How each state is detected
+        columns: [State, Detected when]
+        rows:
+          - [DEAD, "tmux reports the pane as dead: Claude Code exited (panes are kept with remain-on-exit)"]
+          - [WAITING, "The last 15 non-empty lines contain a permission prompt"]
+          - [BUSY, "The last 15 non-empty lines contain esc to interrupt, ctrl+c to interrupt, or a spinner line"]
+          - [IDLE, "None of the above: finished, or waiting for input"]
+
+  - type: section
+    title: What runs on a schedule
+    blocks:
+      - type: timeline
+        title: "superadvisor cron --install"
+        items:
+          - when: Every 15 minutes
+            title: "patrol --clean --apply"
+            text: Status of every session, stuck flags, and auto-close of idle merged lanes.
+          - when: "22:00"
+            title: review
+            text: "Read-only nightly review saved to `brains/.local/reviews/<date>.md`: open PRs, lanes, today's stuck flags, commits, estimated cost."
+          - when: "08:00"
+            title: report
+            text: "Short daily report: lanes, stuck flags, commits, estimated cost."
+
+  - type: section
+    title: Benchmark
+    blocks:
+      - type: callout
+        tone: warning
+        title: N = 1 per card
+        text: "One run per card per mode on the six cards of `demo-app/BACKLOG.md`, so treat the spread as unknown. Both modes ran headless with project settings only."
+      - type: benchmark-comparison
+        title: "Baseline (one Opus session) vs superadvisor (Sonnet leader + tiered agents)"
+        baseline:
+          label: "baseline: one Opus session"
+        candidate:
+          label: "superadvisor: Sonnet leader + tiered agents"
+        metrics:
+          - label: Cards passed
+            baseline: 6
+            candidate: 6
+            better: higher
+            format: integer
+          - label: Cost per card (USD)
+            baseline: 0.292
+            candidate: 0.270
+            better: lower
+            format: number
+            decimals: 3
+          - label: Wall time per card (s)
+            baseline: 66
+            candidate: 62
+            better: lower
+            format: integer
+        method: "One run per card per mode on the six demo cards; `Cost USD` is `total_cost_usd` reported by Claude Code; wall time is the full `claude -p` run."
+        limitations: "N = 1. The demo app is small, so the leader's advantage is small; coordination pays off on longer sessions and parallel lanes. Headless runs cannot measure how often a human had to step in."
+        source:
+          label: bench/results.md
+          href: ../../bench/results.md
+      - type: chart
+        kind: bar
+        title: Cost per card (USD)
+        labels: [C1, C2, C3, C4, C5, C6]
+        series:
+          - label: baseline
+            values: [0.397, 0.216, 0.346, 0.330, 0.253, 0.214]
+          - label: superadvisor
+            values: [0.282, 0.129, 0.515, 0.244, 0.215, 0.236]
+        y:
+          label: USD
+          format: number
+          decimals: 3
+      - type: chart
+        kind: line
+        title: Wall time per card (s)
+        labels: [C1, C2, C3, C4, C5, C6]
+        series:
+          - label: baseline
+            values: [38, 56, 81, 86, 58, 74]
+          - label: superadvisor
+            values: [35, 29, 142, 70, 39, 58]
+        y:
+          label: seconds
+          format: integer
+      - type: chart
+        kind: bar
+        title: Total tokens per card (k)
+        description: Superadvisor used more tokens in total, mostly cache reads on Sonnet and Haiku, at cheaper rates than Opus.
+        labels: [C1, C2, C3, C4, C5, C6]
+        series:
+          - label: baseline
+            values: [195, 161, 220, 216, 204, 201]
+          - label: superadvisor
+            values: [314, 259, 803, 372, 397, 232]
+        y:
+          label: k tokens
+          format: integer
+      - type: list
+        title: What this shows
+        items:
+          - text: Same pass rate on the hidden acceptance tests (6/6 in both modes).
+          - text: Superadvisor cost 92% of baseline.
+          - text: Wall time was about the same.
+      - type: stats
+        title: Measure the main session, not just subagents (internal measurements on a real project, anonymized, API list prices)
+        items:
+          - label: Tokens spent in the main session — the part nobody measured before
+            value: "~70%"
+          - label: Subagent runs over 100 turns per week, after turning on turn-guard
+            value: "153 → 0"
+
+  - type: section
+    title: More documents
+    blocks:
+      - type: references
+        items:
+          - { id: qa, title: "Q&A and discussion prep (Vietnamese)", href: qa.html }
+          - { id: cheatsheet, title: "superadvisor CLI cheat sheet (Vietnamese)", href: cheatsheet.html }
+          - { id: lifecycle, title: Lifecycle of one card, href: ../lifecycle.md }
+          - { id: faq, title: FAQ, href: ../faq.md }
+          - { id: reference, title: "Reference: commands, agents, hooks", href: ../reference.md }
+          - { id: install, title: Install guide, href: ../INSTALL.md }
+          - { id: bench, title: Benchmark results, href: ../../bench/results.md }
