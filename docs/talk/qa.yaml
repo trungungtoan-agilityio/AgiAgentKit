@@ -82,29 +82,10 @@ blocks:
   - type: section
     title: "Cây quyết định: lane bị kẹt thì làm gì"
     blocks:
-      - type: diagram-panel
-        title: Lane bị patrol gắn cờ KẸT
+      - type: image
+        src: img/stuck-lane.svg
+        alt: "Cây quyết định: patrol gắn cờ KẸT (chỉ báo). WAITING từ 5 phút: nếu là quyền của owner thì báo owner, nếu không thì đóng lane và mở lại. DEAD hoặc màn hình không đổi từ 20 phút: đóng lane, viết brief hẹp hơn, mở lại cùng tên. Vẫn kẹt lần hai: dừng và hỏi owner."
         caption: "Patrol chỉ báo, không hành động; leader làm theo skill `lead`. Kẹt lần hai thì dừng và hỏi owner."
-        spec:
-          meta:
-            title: Lane kẹt → làm gì
-          nodes:
-            - { id: flag, label: "patrol gắn cờ KẸT" }
-            - { id: dead, label: "DEAD: pane chết" }
-            - { id: waiting, label: "WAITING ≥ waiting_min (5 phút)" }
-            - { id: nochange, label: "Màn hình không đổi ≥ stuck_min (20 phút)" }
-            - { id: owner-prompt, label: Hộp hỏi quyền chỉ owner duyệt → báo owner }
-            - { id: reopen, label: "Đóng lane, viết brief hẹp hơn, mở lại cùng tên" }
-            - { id: ask, label: Kẹt lần hai → dừng và hỏi owner }
-          connections:
-            - { from: flag, to: dead }
-            - { from: flag, to: waiting }
-            - { from: flag, to: nochange }
-            - { from: waiting, to: owner-prompt, label: quyền của owner }
-            - { from: waiting, to: reopen, label: không phải quyền owner }
-            - { from: dead, to: reopen }
-            - { from: nochange, to: reopen }
-            - { from: reopen, to: ask, label: vẫn kẹt }
       - type: comparison
         title: Có plugin và không có plugin
         left:

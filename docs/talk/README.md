@@ -27,3 +27,14 @@ npx -y @bestagentkits/render docs/talk/handout.yaml --out docs/talk/handout.html
 
 Làm tương tự với `qa.yaml` và `cheatsheet.yaml`. Giữ theme `paper-ink` hoặc `swiss-clean`: font nhúng của vài theme
 khác chứa chuỗi bị bộ quét từ cấm bắt nhầm.
+
+## Hình isometric
+
+`img/architecture.svg` (handout) và `img/stuck-lane.svg` (hỏi đáp) là SVG tĩnh, cùng phép chiếu và bảng màu với
+`docs/atlas.html`, tự đổi màu theo chế độ sáng/tối của hệ thống. Script tạo hình không cần thư viện nào:
+
+```bash
+node docs/talk/img/src/iso-diagrams.mjs
+```
+
+Chạy xong thì compile lại trang dùng hình đó.
