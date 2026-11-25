@@ -40,15 +40,15 @@ AgiAgentKit/bin/superadvisor up /path/to/your-project
 ```
 
 Then open the leader session (`tmux -L sa attach -t YOUR-PROJECT-LEAD`, or Remote Control in the Claude app) and give
-it work: *"Read BACKLOG.md, size each card, open a lane for C1 and C3."*
+it work: *"Read BACKLOG.md, size each card, open a lane for C3 and C4."* (The leader does the small cards itself; C3 and C4 are the medium ones.)
 
 ## How it works
 
 ```mermaid
 flowchart LR
   Owner([You]) -- Remote Control --> Leader[Leader session]
-  Leader -- lane open --> L1[Lane: card C1<br/>own worktree + PR]
-  Leader -- lane open --> L2[Lane: card C3<br/>own worktree + PR]
+  Leader -- lane open --> L1[Lane: card C3<br/>own worktree + PR]
+  Leader -- lane open --> L2[Lane: card C4<br/>own worktree + PR]
   Brains[(brains/<br/>permissions, decisions)] --> Leader
   Hooks{{Hooks}} -.-> L1
   Hooks -.-> L2
@@ -63,7 +63,7 @@ flowchart LR
 | **You** | Decide product; approve merges, production, permissions | Hand-feed work to each lane |
 | **Leader** | Sizes the backlog, writes briefs, opens lanes, unblocks them, reports in 5 lines | Write large blocks of code itself |
 | **Lane** | One card, one worktree, one PR | Merge, push to `main`/`master`/`dev`, edit settings (the `owner-guard` hook blocks it) |
-| **Brains** | `brains/` folder: the leader's permissions, decisions and inbox | Act on its own |
+| **Brains** | `brains/` folder: the leader's permissions, decisions and inbox | Become a second chat channel |
 
 | Agent | Model | Used for |
 |-------|-------|----------|

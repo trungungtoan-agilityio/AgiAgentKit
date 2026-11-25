@@ -85,9 +85,9 @@ Check: `superadvisor status` shows one line for the leader.
 
 ## 6. Give it work
 
-Tell the leader what to do in plain words, for example: *"Read BACKLOG.md, size each card, open lanes for the two
-small ones."* The leader writes a brief per card and opens lanes with `superadvisor lane open`. Each lane gets a
-worktree and a branch `lane/<name>`, and opens a PR when its card is done.
+Tell the leader what to do in plain words, for example: *"Read BACKLOG.md, size each card, open a lane for each
+medium card."* The leader does the small cards itself and writes a brief per medium card, opening a lane with
+`superadvisor lane open`. Each lane gets a worktree and a branch `lane/<name>`, and opens a PR when its card is done.
 
 You approve merges by saying so to the leader, for example `M 12` to merge PR 12.
 
@@ -96,7 +96,7 @@ You approve merges by saying so to the leader, for example `M 12` to merge PR 12
 | `superadvisor status` | One line per session: BUSY, IDLE, WAITING or DEAD, and minutes since the screen changed |
 | `superadvisor patrol` | Same, and flags lanes stuck longer than the patrol threshold |
 | `superadvisor report` | Short daily report: lanes, stuck flags, commits, estimated cost |
-| `superadvisor cron` | Prints a crontab and a launchd sample for patrol and report (installs nothing) |
+| `superadvisor cron [--install]` | No flag: prints a crontab and launchd sample (installs nothing). `--install`: schedules `patrol --clean --apply` every 15 min, `review` at 22:00 and `report` at 08:00 |
 
 ## 7. Read the scorecard
 

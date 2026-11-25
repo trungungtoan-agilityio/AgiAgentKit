@@ -442,7 +442,7 @@ const STEPS = [
     m: { lanes: 5, stuck: null, prompts: 9, tokens: 70, cost: 90 },
     show: CORE, hot: ["leader", "brains"],
     packets: [{ e: "rc", t: "approval" }, ...BUS.map(e => ({ e, t: "brief" }))],
-    co: [[[240, 250, 70], "sizes cards S / M / L, writes briefs", "", 0, 52], [[-115, 335, 40], "\"Read BACKLOG.md, open C1 and C3\"", "phone", 40]] },
+    co: [[[240, 250, 70], "sizes cards S / M / L, writes briefs", "", 0, 52], [[-115, 335, 40], "\"Read BACKLOG.md, open C3 and C4\"", "phone", 40]] },
   { short: "Lanes", title: "A lane = one card, one worktree, one PR",
     body: ["The leader runs <code>superadvisor lane open &lt;name&gt; --brief &lt;file&gt;</code>. That creates a git worktree on branch <code>lane/&lt;name&gt;</code> and a tmux session with <code>KIT_LANE=1</code>; the brief is copied to <code>brains/.local/briefs/</code>.",
       "Because each card has its own worktree, parallel lanes never touch each other's files, and every PR can be reviewed on its own. The lane reports back to the leader, not to you."],

@@ -166,10 +166,11 @@ rules live in `brains/lead.md` and the `lead` skill; no hook enforces them on th
 ```
 
 This kills session `DEMO-LIBRARY-C3` and removes its patrol sample. With `--rm-worktree` it removes the worktree and
-deletes branch `lane/c3`, but only if `git branch --merged <integration branch>` lists `lane/c3` in your local
-checkout. Pull the integration branch first. After a squash merge the branch is not an ancestor of the integration
-branch, so `lane close` keeps the worktree and says so; remove it yourself with `git worktree remove` once you are sure.
-Without `--rm-worktree` the worktree is always kept.
+deletes branch `lane/c3`, but only when the branch counts as merged: either `git branch --merged <integration branch>`
+lists `lane/c3`, or — with `gh` installed — a merged PR's head is the branch tip, so a squash-merged PR counts too
+(`bin/superadvisor` `branch_merged`). Pull the integration branch first. If neither holds (for example `gh` is not
+installed, or you committed more after the PR), `lane close` keeps the worktree and says so; remove it yourself with
+`git worktree remove` once you are sure. Without `--rm-worktree` the worktree is always kept.
 
 The leader then writes one line to `brains/decisions.md`.
 

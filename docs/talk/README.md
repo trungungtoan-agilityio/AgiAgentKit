@@ -3,6 +3,8 @@
 Các trang bổ sung cho buổi nói chuyện Superadvisor (`Session-Superadvisor-AgilityIO.pdf` / `.pptx`). Mở file HTML bằng
 trình duyệt; trang không gửi request mạng nào.
 
+Nguồn sinh hai file deck (`.pptx` / `.pdf`) nằm trong [`src/`](src/) — xem [`src/README.md`](src/README.md) để build lại.
+
 | Trang | Spec | Nội dung |
 |-------|------|----------|
 | [handout.html](handout.html) | `handout.yaml` | Tài liệu đi kèm (tiếng Anh): vấn đề, sơ đồ leader/lanes/brains, vòng đời một thẻ, trạng thái lane, lịch cron, biểu đồ benchmark |

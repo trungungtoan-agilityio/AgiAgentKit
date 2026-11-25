@@ -3,3 +3,8 @@ node_modules/
 .claude/metrics/
 brains/.local/
 .DS_Store
+
+# Deck build artifacts written next to docs/talk/src/ builders (the committed copies live in docs/talk/)
+docs/talk/src/deck-print.html
+docs/talk/src/Session-Superadvisor-AgilityIO.pptx
+docs/talk/src/Session-Superadvisor-AgilityIO.pdf

@@ -47,7 +47,7 @@ sequenceDiagram
   participant Lane as Lane (tmux + worktree)
   participant Hooks
   participant Events as events.jsonl
-  Owner->>Leader: "Do cards C1 and C3" (Remote Control)
+  Owner->>Leader: "Do cards C3 and C4" (Remote Control)
   Leader->>Leader: read brains/, size S/M/L, write a brief
   Leader->>Lane: superadvisor lane open c3 --brief file
   Note over Lane: creates worktree lane/c3 and a session with KIT_LANE=1

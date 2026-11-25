@@ -21,7 +21,8 @@ folder and the branch. Metrics are written to the main checkout, so removing a w
 ### What happens when a lane is stuck?
 
 `superadvisor patrol` flags it: dead pane, a permission prompt waiting at least `patrol.waiting_min` minutes (default
-5), or a screen unchanged for at least `patrol.stuck_min` minutes (default 20). Patrol only reports; it never acts.
+5), or a screen unchanged for at least `patrol.stuck_min` minutes (default 20). Plain `patrol` only reports; only
+`patrol --clean --apply` acts — it closes lanes that are idle, merged and clean, and `cron --install` runs it every 15 minutes.
 The `lead` skill tells the leader to look at the lane, pass owner-only permission prompts to you, or close the lane,
 write a narrower brief and reopen it with the same name. After a second stall it stops and asks you. Inside a lane,
 `turn-guard` also cuts off a `builder` or `tester` run at 130 tool calls so it summarizes instead of looping.

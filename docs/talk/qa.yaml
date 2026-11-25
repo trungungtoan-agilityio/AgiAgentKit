@@ -21,7 +21,7 @@ blocks:
           - title: Vì sao mỗi lane một git worktree?
             text: "Các lane chạy cùng lúc. Chung một checkout thì chúng sửa cùng file và đổi nhánh dưới chân nhau. Mỗi lane có `.claude/worktrees/<name>` trên nhánh riêng `lane/<name>` cắt từ nhánh tích hợp: một thẻ là một thư mục, một nhánh, một PR. Metrics ghi vào checkout chính nên xoá worktree không mất gì."
           - title: Lane bị kẹt thì sao?
-            text: "`superadvisor patrol` gắn cờ: pane chết, hộp hỏi quyền chờ ít nhất `patrol.waiting_min` phút (mặc định 5), hoặc màn hình không đổi ít nhất `patrol.stuck_min` phút (mặc định 20). Patrol chỉ báo, không hành động. Skill `lead` bảo leader xem lane, chuyển hộp hỏi quyền chỉ owner được duyệt cho bạn, hoặc đóng lane, viết brief hẹp hơn và mở lại cùng tên. Kẹt lần hai thì dừng và hỏi bạn."
+            text: "`superadvisor patrol` gắn cờ: pane chết, hộp hỏi quyền chờ ít nhất `patrol.waiting_min` phút (mặc định 5), hoặc màn hình không đổi ít nhất `patrol.stuck_min` phút (mặc định 20). `patrol` thường chỉ báo; chỉ `patrol --clean --apply` mới hành động — đóng lane rỗi đã merge và sạch (`cron --install` chạy mỗi 15 phút). Skill `lead` bảo leader xem lane, chuyển hộp hỏi quyền chỉ owner được duyệt cho bạn, hoặc đóng lane, viết brief hẹp hơn và mở lại cùng tên. Kẹt lần hai thì dừng và hỏi bạn."
           - title: "`owner-guard` có phải ranh giới bảo mật không?"
             text: "Không. Nó là rào chắn chống lane làm việc của owner theo thói quen, không chống agent có ý xấu. Nó chỉ chạy khi `KIT_LANE=1`, chỉ xem lệnh Bash, Edit, Write, MultiEdit và chỉ các đoạn lệnh trực tiếp. Không có `jq` thì mọi hook cho qua. Muốn ranh giới thật: bảo vệ nhánh tích hợp, bắt buộc review, token quyền nhỏ nhất."
           - title: Ước tính chi phí sát hoá đơn thật tới đâu?
@@ -85,7 +85,7 @@ blocks:
       - type: image
         src: img/stuck-lane.svg
         alt: "Cây quyết định: patrol gắn cờ KẸT (chỉ báo). WAITING từ 5 phút: nếu là quyền của owner thì báo owner, nếu không thì đóng lane và mở lại. DEAD hoặc màn hình không đổi từ 20 phút: đóng lane, viết brief hẹp hơn, mở lại cùng tên. Vẫn kẹt lần hai: dừng và hỏi owner."
-        caption: "Patrol chỉ báo, không hành động; leader làm theo skill `lead`. Kẹt lần hai thì dừng và hỏi owner."
+        caption: "`patrol` thường chỉ báo; chỉ `patrol --clean --apply` tự đóng lane rỗi đã merge. Leader làm theo skill `lead`. Kẹt lần hai thì dừng và hỏi owner."
       - type: comparison
         title: Có plugin và không có plugin
         left:
