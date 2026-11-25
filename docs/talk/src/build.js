@@ -224,7 +224,7 @@ function gradientSvg(w, h) {
     ["metrics-main", "Logs only — main-session tokens per model", "Each Stop"],
   ].map((r, i) => i === 0 ? r : r.map((c, j) => ({ text: c, options: { bold: j === 0, color: C.text1, fill: { color: C.background1 } } })));
   s.addTable(guardRows, { x: 0.7, y: 2.4, w: 11.9, colW: [2.9, 5.6, 3.4], fontSize: 15, fontFace: THEME.bodyFontFace, color: C.text1, border: { type: "solid", pt: 1, color: HEX.accent6 }, rowH: 0.52, valign: "middle", margin: [0.05, 0.15, 0.05, 0.15], objectName: "guards table" });
-  s.addText("Six hooks: four deny (in auto mode, with guidance instead of a prompt), two only log. Lanes compact at 200k tokens and close after each card.", { x: 0.7, y: 6.45, w: 11.9, h: 0.5, fontSize: 14, color: C.text2, margin: 0, valign: "top", isTextBox: true, objectName: "guards footnote" });
+  s.addText("Six hooks: four deny (guidance, not a prompt in auto mode), two only log. Lanes compact at 200k, close per card.", { x: 0.7, y: 6.45, w: 11.9, h: 0.5, fontSize: 14, color: C.text2, margin: 0, valign: "top", isTextBox: true, objectName: "guards footnote" });
   s.addNotes("The count matches the install slide: six hook scripts — four guards that deny and two metrics hooks that only log. In auto mode a guard does not ask a human; it denies with guidance so the session changes course instead of waiting. Every threshold is tunable with an environment variable.");
 
   s = content("Saving tokens", "Saving tokens", "Measure the main session, not just subagents");
@@ -236,7 +236,7 @@ function gradientSvg(w, h) {
     s.addText(stats[i][0], { x: x + 0.45, y: 3.75, w: 5.0, h: 1.1, fontSize: 60, bold: true, color: C.accent1, margin: 0, isTextBox: true, objectName: `stat number ${i + 1}` });
     s.addText(stats[i][1], { x: x + 0.45, y: 4.85, w: 5.0, h: 0.9, fontSize: 16, color: C.text2, margin: 0, valign: "top", isTextBox: true, objectName: `stat label ${i + 1}` });
   }
-  s.addText("How measured: events.jsonl token logs over several weeks on one internal project, anonymized · API list prices. Demo bench (bench/results.md, N=1, six cards): same pass rate, about 8% cheaper than a single Opus session.", { x: 0.7, y: 6.2, w: 11.9, h: 0.5, fontSize: 12, italic: true, color: C.text2, margin: 0, valign: "top", isTextBox: true, objectName: "stats source" });
+  s.addText("How measured: events.jsonl token logs on one internal project, anonymized · API list prices. Demo bench (bench/results.md, N=1, six cards): same pass rate, about 8% cheaper than a single Opus session.", { x: 0.7, y: 6.2, w: 11.9, h: 0.5, fontSize: 12, italic: true, color: C.text2, margin: 0, valign: "top", isTextBox: true, objectName: "stats source" });
   s.addNotes("The biggest lesson from measuring ourselves: we tuned subagents carefully, yet the most expensive part was the coordinating session, because every turn re-reads a long context. So the kit logs main-session tokens every turn, reading the transcript with a byte cursor so it stays fast on very large transcripts.");
 
   // ---------- 4. Demo ----------
@@ -278,11 +278,11 @@ function gradientSvg(w, h) {
     { text: "AgiAgentKit/bin/superadvisor up /path/to/project" },
   ], { x: 0.7, y: 2.45, w: 7.9, h: 2.4, fontFace: "Courier New", fontSize: 13, color: C.background1, fill: { color: C.text1 }, margin: [0.25, 0.35, 0.25, 0.35], valign: "middle", paraSpaceAfter: 6, isTextBox: true, objectName: "install commands" });
   card(s, 9.0, 2.45, 3.6, 2.4, "includes card");
-  s.addText([{ text: "Includes", options: { fontSize: 18, bold: true, color: C.text1, breakLine: true } }, { text: "Five tiered agents, six hooks, the superadvisor CLI, a sample app with a six-card backlog, and a benchmark.", options: { fontSize: 14, color: C.text2 } }],
+  s.addText([{ text: "Includes", options: { fontSize: 18, bold: true, color: C.text1, breakLine: true } }, { text: "Five tiered agents, six hooks (four deny, two log only), the superadvisor CLI, a sample app with a six-card backlog, and a benchmark.", options: { fontSize: 14, color: C.text2 } }],
     { x: 9.3, y: 2.6, w: 3.0, h: 2.1, margin: 0, valign: "top", isTextBox: true, objectName: "includes text" });
   s.addText("AgiAgentKit  ·  github.com/trungungtoan-agilityio/AgiAgentKit  ·  MIT license", { x: 0.7, y: 5.2, w: 11.9, h: 0.4, fontSize: 15, color: C.text2, margin: 0, isTextBox: true, objectName: "download line" });
   s.addText("Read after the talk:  docs/talk/handout.html  ·  cheatsheet.html  ·  qa.html", { x: 0.7, y: 5.65, w: 11.9, h: 0.4, fontSize: 15, color: C.text2, margin: 0, isTextBox: true, objectName: "docs line" });
-  s.addNotes("Needs Claude Code, tmux, jq, git, and Node 20 for the sample app. To try it without installing the plugin, run claude with the --plugin-dir flag pointing at the plugin folder.");
+  s.addNotes("The six hooks are four guards that deny — turn-guard, agent-routing, test-budget, owner-guard — and two metrics hooks that only log: metrics-subagent and metrics-main. Needs Claude Code, tmux, jq, git, and Node 20 for the sample app. To try it without installing the plugin, run claude with the --plugin-dir flag pointing at the plugin folder.");
 
   s = pres.addSlide({ masterName: "Cover", sectionTitle: "Closing" });
   s.addText("Thank you", { placeholder: "title" });

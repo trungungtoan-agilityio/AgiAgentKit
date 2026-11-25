@@ -130,14 +130,14 @@ contentSlide("Saving tokens", "Guardrails live in hooks, not in promises",
     ["test-budget", "Denies whole-suite test runs", "Unless FULL_SUITE_OK=1"], ["owner-guard", "Denies lane merges, shared-branch pushes, settings writes", "In lanes (KIT_LANE=1)"],
     ["metrics-subagent", "Logs only — tokens per subagent run", "Each subagent stop"], ["metrics-main", "Logs only — main-session tokens per model", "Each Stop"],
   ], { cell: (j) => "background:#fff;" + (j === 0 ? "font-weight:700" : "") }) +
-  text(0.7, 6.45, 11.9, 0.5, 14, `color:${K.body}`, "Six hooks: four deny (in auto mode, with guidance instead of a prompt), two only log. Lanes compact at 200k tokens and close after each card."), true);
+  text(0.7, 6.45, 11.9, 0.5, 14, `color:${K.body}`, "Six hooks: four deny (guidance, not a prompt in auto mode), two only log. Lanes compact at 200k, close per card."), true);
 
 // 9 telemetry
 contentSlide("Saving tokens", "Measure the main session, not just subagents", [
   ["~70%", "of tokens are spent in the main session — the part nobody measured before", "FaGaugeHigh"],
   ["153 → 0", "subagent runs over 100 turns per week, after turning on turn-guard", "FaChartColumn"],
 ].map(([b, l, i], k) => { const x = 0.7 + k * 6.05; return card(x, 2.45, 5.85, 3.5) + iconCircle(x + 0.45, 2.85, 0.8, i) + text(x + 0.45, 3.75, 5, 1.1, 60, `font-weight:700;color:${K.purple};line-height:1.1`, esc(b)) + text(x + 0.45, 4.85, 5, 0.9, 16, `color:${K.body};line-height:1.35`, esc(l)); }).join("") +
-  text(0.7, 6.2, 11.9, 0.5, 12, `font-style:italic;color:${K.body}`, "How measured: events.jsonl token logs over several weeks on one internal project, anonymized · API list prices. Demo bench (bench/results.md, N=1, six cards): same pass rate, about 8% cheaper than a single Opus session."));
+  text(0.7, 6.2, 11.9, 0.5, 12, `font-style:italic;color:${K.body}`, "How measured: events.jsonl token logs on one internal project, anonymized · API list prices. Demo bench (bench/results.md, N=1, six cards): same pass rate, about 8% cheaper than a single Opus session."));
 
 // 10 demo
 contentSlide("Demo · sample project “Library loans”", "A six-card backlog, from small fixes to a hard bug",
@@ -154,7 +154,7 @@ contentSlide("Demo · sample project “Library loans”", "A six-card backlog, 
 contentSlide("Try it", "Install in five minutes",
   box(0.7, 2.45, 7.9, 2.4, `background:${K.ink};color:#fff;font-family:'Courier New',monospace;font-size:13pt;padding:.25in .35in;box-sizing:border-box;display:flex;flex-direction:column;justify-content:center;gap:6pt`,
     ["git clone https://github.com/trungungtoan-agilityio/AgiAgentKit", "claude plugin marketplace add ./AgiAgentKit", "claude plugin install agi-agent-kit@agi-agent-kit", "AgiAgentKit/bin/superadvisor init /path/to/project", "AgiAgentKit/bin/superadvisor up /path/to/project"].map((l) => `<div>${l}</div>`).join("")) +
-  card(9.0, 2.45, 3.6, 2.4) + box(9.3, 2.6, 3.0, 2.1, "", `<b style="font-size:18pt;color:${K.ink}">Includes</b><p style="font-size:14pt;color:${K.body};margin:6pt 0 0;line-height:1.35">Five tiered agents, six hooks, the superadvisor CLI, a sample app with a six-card backlog, and a benchmark.</p>`) +
+  card(9.0, 2.45, 3.6, 2.4) + box(9.3, 2.6, 3.0, 2.1, "", `<b style="font-size:18pt;color:${K.ink}">Includes</b><p style="font-size:14pt;color:${K.body};margin:6pt 0 0;line-height:1.35">Five tiered agents, six hooks (four deny, two log only), the superadvisor CLI, a sample app with a six-card backlog, and a benchmark.</p>`) +
   text(0.7, 5.2, 11.9, 0.4, 15, `color:${K.body}`, "AgiAgentKit  ·  github.com/trungungtoan-agilityio/AgiAgentKit  ·  MIT license") +
   text(0.7, 5.65, 11.9, 0.4, 15, `color:${K.body}`, "Read after the talk:  docs/talk/handout.html  ·  cheatsheet.html  ·  qa.html"), true);
 
