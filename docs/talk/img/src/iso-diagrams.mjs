@@ -144,14 +144,14 @@ function architecture() {
   S.label(brains, ["Brains", "patrol · review · report"], { above: true });
   S.label(leader, ["Leader", "tmux + Remote Control"], { above: true });
   S.label(lanes[0], ["Lane: small", "sonnet"]);
-  S.label(lanes[1], ["Lane: medium", "sonnet + review"]);
+  S.label(lanes[1], ["Lane: medium", "sonnet + opus review"]);
   S.label(lanes[2], ["Lane: hard bug", "opus"]);
   S.label(hooks, ["Hooks", "every tool call"], { dx: 64, anchor: "start" });
   S.label(metrics, ["Token metrics", "kit-stats"], { dx: 46, anchor: "start" });
   S.text(0, 545, "brief", { dx: 8, dy: -6, anchor: "start" });
   return S.render(
     "Superadvisor architecture",
-    "The owner talks to the leader session from the phone over Remote Control. Brains (patrol, nightly review, morning report) alert the leader when a lane is stuck. The leader sends a brief to three lanes: small (sonnet), medium (sonnet plus review) and hard bug (opus). Every tool call in every lane goes through the hooks, which write token counts to the metrics read by kit-stats.",
+    "The owner talks to the leader session from the phone over Remote Control. Brains (patrol, nightly review, morning report) alert the leader when a lane is stuck. The leader sends a brief to three lanes, with a model chosen by task size: small (sonnet), medium (sonnet builder plus one opus review round) and hard bug (opus). Every tool call in every lane goes through the hooks, which write token counts to the metrics read by kit-stats.",
     "en",
   );
 }

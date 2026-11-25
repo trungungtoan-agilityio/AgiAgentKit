@@ -30,7 +30,7 @@ blocks:
         text: The leader assigns work, unblocks lanes and merges within the limits you set. You decide product, production and permissions.
       - type: image
         src: img/architecture.svg
-        alt: "Architecture: the owner talks to the leader over Remote Control; brains alert the leader when a lane is stuck; the leader briefs three lanes (sonnet, sonnet + review, opus); hooks see every tool call and write token metrics for kit-stats."
+        alt: "Architecture: the owner talks to the leader over Remote Control; brains alert the leader when a lane is stuck; the leader briefs three lanes, a model per task size (small = sonnet; medium = sonnet builder + one opus review; hard bug = opus); hooks see every tool call and log token metrics."
         caption: "Owner drives the leader from the phone over Remote Control. The leader opens lanes with `superadvisor lane open`; hooks watch every tool call and log token metrics; brains patrol and report back to the leader."
       - type: table
         title: Four roles, each knows what is not its job
