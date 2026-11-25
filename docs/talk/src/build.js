@@ -140,8 +140,8 @@ function gradientSvg(w, h) {
   const lbl = (x, y, w, t) => s.addText(t, { x, y, w, h: 0.3, fontSize: 11, bold: true, color: C.accent1, margin: 0, isTextBox: true, objectName: "label " + t });
   node(0.7, 3.85, 2.0, 1.0, "Owner", "on the phone", "owner", "owner");
   node(3.4, 3.85, 2.5, 1.0, "Leader session", "tmux + Remote Control", "lead", "leader");
-  node(6.7, 2.3, 2.5, 0.85, "Lane: small", "sonnet", "", "lane small");
-  node(6.7, 3.93, 2.5, 0.85, "Lane: medium", "sonnet + opus review", "", "lane medium");
+  node(6.7, 2.3, 2.5, 0.85, "Lane: medium", "sonnet + opus review", "", "lane medium a");
+  node(6.7, 3.93, 2.5, 0.85, "Lane: medium", "sonnet + opus review", "", "lane medium b");
   node(6.7, 5.45, 2.5, 0.8, "Lane: hard bug", "opus", "", "lane hard");
   node(10.0, 2.9, 2.6, 0.9, "Hooks", "every tool call", "guard", "hooks");
   node(10.0, 4.6, 2.6, 0.9, "Token metrics", "kit-stats", "guard", "metrics");
@@ -160,7 +160,7 @@ function gradientSvg(w, h) {
   lbl(6.5, 6.72, 1.5, "metrics");
   arrow(4.65, 4.85, 0, 0.75, { dash: true, up: true, name: "brains to leader" });
   lbl(4.75, 5.05, 1.5, "stuck? alert");
-  s.addNotes("Left to right. The owner only talks to the leader through Remote Control. The leader opens lanes from a brief: one card, one worktree, and a model chosen by task size (--model) — sonnet for most work, opus for a hard bug. A medium card adds one opus review round; the reviewer is opus, not sonnet. Every tool call a lane makes passes through hooks that cap long runs, block model overrides and stop lanes from doing the owner’s job. Hooks log tokens; kit-stats sums them. Brains runs in the background: a 15-minute patrol that flags stuck lanes to the leader.");
+  s.addNotes("Left to right. The owner only talks to the leader through Remote Control. The leader does small cards (1-3 files) itself and opens a lane for each medium card and hard bug. A lane's model is chosen by how hard the card is (--model): a medium card runs a sonnet builder plus one opus review round (the reviewer is opus, not sonnet), a hard bug runs opus. Every tool call a lane makes passes through hooks that cap long runs, block model overrides and stop lanes from doing the owner’s job. Hooks log tokens; kit-stats sums them. Brains runs in the background: a 15-minute patrol that flags stuck lanes to the leader.");
 
   s = content("How it works", "How it works", "Four roles, each knows what is not its job");
   const hdr = (t) => ({ text: t, options: { bold: true, color: C.background1, fill: { color: C.accent1 } } });
@@ -172,7 +172,8 @@ function gradientSvg(w, h) {
     ["Brains", "15-minute patrol, nightly review, morning report", "Become a second chat channel"],
   ].map((r, i) => i === 0 ? r : r.map((c, j) => ({ text: c, options: { bold: j === 0, color: j === 0 ? C.accent1 : C.text1 } })));
   s.addTable(roleRows, { x: 0.7, y: 2.45, w: 11.9, colW: [1.9, 5.6, 4.4], fontSize: 16, fontFace: THEME.bodyFontFace, color: C.text1, border: { type: "solid", pt: 1, color: HEX.accent6 }, rowH: 0.75, valign: "middle", margin: [0.08, 0.15, 0.08, 0.15], objectName: "roles table" });
-  s.addNotes("The key column is “Never does”. A lane cannot merge not because it promises not to, but because the owner-guard hook blocks it. Brains is not a chat session; it is the leader’s background memory and patrol.");
+  s.addText("Brains never acts on its own: patrol, nightly review and morning report run only when scheduled with superadvisor cron --install (or when you run them by hand).", { x: 0.7, y: 6.5, w: 11.9, h: 0.5, fontSize: 13, italic: true, color: C.text2, margin: 0, valign: "top", isTextBox: true, objectName: "brains schedule footnote" });
+  s.addNotes("The key column is “Never does”. A lane cannot merge not because it promises not to, but because the owner-guard hook blocks it. Brains is not a chat session; it is the leader’s background memory and patrol — its patrol, nightly review and morning report run only on the schedule set by superadvisor cron --install, or when you run them by hand.");
 
   s = content("How it works", "How it works", "The leader’s loop, after every event");
   const loop = [
@@ -269,7 +270,7 @@ function gradientSvg(w, h) {
 
   // ---------- 5. Closing ----------
   pres.addSection({ title: "Closing" });
-  s = content("Closing", "Try it", "Install in five minutes", true);
+  s = content("Closing", "Try it", "Install in about ten minutes", true);
   s.addText([
     { text: "git clone https://github.com/trungungtoan-agilityio/AgiAgentKit", options: { breakLine: true } },
     { text: "claude plugin marketplace add ./AgiAgentKit", options: { breakLine: true } },

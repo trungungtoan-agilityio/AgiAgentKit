@@ -40,15 +40,15 @@ AgiAgentKit/bin/superadvisor up /path/to/your-project
 ```
 
 Then open the leader session (`tmux -L sa attach -t YOUR-PROJECT-LEAD`, or Remote Control in the Claude app) and give
-it work: *"Read BACKLOG.md, size each card, open a lane for C1 and C3."*
+it work: *"Read BACKLOG.md, size each card, open a lane for C3 and C4."* (The leader does the small cards itself; C3 and C4 are the medium ones.)
 
 ## How it works
 
 ```mermaid
 flowchart LR
   Owner([You]) -- Remote Control --> Leader[Leader session]
-  Leader -- lane open --> L1[Lane: card C1<br/>own worktree + PR]
-  Leader -- lane open --> L2[Lane: card C3<br/>own worktree + PR]
+  Leader -- lane open --> L1[Lane: card C3<br/>own worktree + PR]
+  Leader -- lane open --> L2[Lane: card C4<br/>own worktree + PR]
   Brains[(brains/<br/>permissions, decisions)] --> Leader
   Hooks{{Hooks}} -.-> L1
   Hooks -.-> L2

@@ -40,7 +40,7 @@ AgiAgentKit/bin/superadvisor up /path/to/your-project
 ```
 
 Mở session leader (`tmux -L sa attach -t YOUR-PROJECT-LEAD`, hoặc Remote Control trong app Claude) và giao việc:
-*"Đọc BACKLOG.md, phân cỡ từng thẻ, mở lane cho C1 và C3."*
+*"Đọc BACKLOG.md, phân cỡ từng thẻ, mở lane cho C3 và C4."* (Leader tự làm các thẻ nhỏ; C3 và C4 là thẻ cỡ vừa.)
 
 ## Cách hoạt động
 

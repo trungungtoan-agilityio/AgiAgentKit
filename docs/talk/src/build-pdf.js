@@ -85,7 +85,7 @@ slides.push(`<section style="background:${GRAD}">
   const lbl = (x, y, w, t) => text(x, y, w, 0.3, 11, `font-weight:700;color:${K.purple}`, t);
   contentSlide("How it works", "Leader, lanes, brains and guardrails", svg +
     node(0.7, 3.85, 2.0, 1.0, "Owner", "on the phone", "owner") + node(3.4, 3.85, 2.5, 1.0, "Leader session", "tmux + Remote Control", "lead") +
-    node(6.7, 2.3, 2.5, 0.85, "Lane: small", "sonnet") + node(6.7, 3.93, 2.5, 0.85, "Lane: medium", "sonnet + opus review") + node(6.7, 5.45, 2.5, 0.8, "Lane: hard bug", "opus") +
+    node(6.7, 2.3, 2.5, 0.85, "Lane: medium", "sonnet + opus review") + node(6.7, 3.93, 2.5, 0.85, "Lane: medium", "sonnet + opus review") + node(6.7, 5.45, 2.5, 0.8, "Lane: hard bug", "opus") +
     node(10.0, 2.9, 2.6, 0.9, "Hooks", "every tool call", "guard") + node(10.0, 4.6, 2.6, 0.9, "Token metrics", "kit-stats", "guard") + node(3.4, 5.6, 2.5, 0.85, "Brains", "patrol · reports") +
     lbl(2.72, 4.45, 0.7, "Remote") + lbl(6.5, 6.72, 1.5, "metrics") + lbl(4.75, 5.05, 1.5, "stuck? alert"));
 }
@@ -97,7 +97,8 @@ contentSlide("How it works", "Four roles, each knows what is not its job", table
   ["Leader", "Splits the backlog, writes briefs, opens lanes, unblocks, merges within limits", "Write large blocks of code itself"],
   ["Lane", "One card, one worktree, one PR", "Merge or change permissions — the owner-guard hook blocks it"],
   ["Brains", "15-minute patrol, nightly review, morning report", "Become a second chat channel"],
-], { cell: (j) => (j === 0 ? `font-weight:700;color:${K.purple}` : "") }));
+], { cell: (j) => (j === 0 ? `font-weight:700;color:${K.purple}` : "") }) +
+  text(0.7, 6.5, 11.9, 0.5, 13, `font-style:italic;color:${K.body}`, "Brains never acts on its own: patrol, nightly review and morning report run only when scheduled with superadvisor cron --install (or when you run them by hand)."));
 
 // 6 loop
 contentSlide("How it works", "The leader’s loop, after every event", [
@@ -151,7 +152,7 @@ contentSlide("Demo · sample project “Library loans”", "A six-card backlog, 
   box(2.95, 5.85, 9.65, 1.1, "display:flex;flex-direction:column;justify-content:center", `<b style="font-size:16pt;color:${K.ink}">Demo recording (embedded in the PowerPoint)</b><p style="font-size:13pt;color:${K.body};margin:6pt 0 0;line-height:1.35">One minute: problem → architecture → init → up → lane → PR → merge → close (card C3) → benchmark. File: docs/talk/src/assets/agikit-demo.mp4</p>`));
 
 // 11 try it
-contentSlide("Try it", "Install in five minutes",
+contentSlide("Try it", "Install in about ten minutes",
   box(0.7, 2.45, 7.9, 2.4, `background:${K.ink};color:#fff;font-family:'Courier New',monospace;font-size:13pt;padding:.25in .35in;box-sizing:border-box;display:flex;flex-direction:column;justify-content:center;gap:6pt`,
     ["git clone https://github.com/trungungtoan-agilityio/AgiAgentKit", "claude plugin marketplace add ./AgiAgentKit", "claude plugin install agi-agent-kit@agi-agent-kit", "AgiAgentKit/bin/superadvisor init /path/to/project", "AgiAgentKit/bin/superadvisor up /path/to/project"].map((l) => `<div>${l}</div>`).join("")) +
   card(9.0, 2.45, 3.6, 2.4) + box(9.3, 2.6, 3.0, 2.1, "", `<b style="font-size:18pt;color:${K.ink}">Includes</b><p style="font-size:14pt;color:${K.body};margin:6pt 0 0;line-height:1.35">Five tiered agents, six hooks (four deny, two log only), the superadvisor CLI, a sample app with a six-card backlog, and a benchmark.</p>`) +
