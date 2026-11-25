@@ -142,7 +142,7 @@ function gradientSvg(w, h) {
   node(3.4, 3.85, 2.5, 1.0, "Leader session", "tmux + Remote Control", "lead", "leader");
   node(6.7, 2.3, 2.5, 0.85, "Lane: C3 (medium)", "sonnet + opus review", "", "lane c3");
   node(6.7, 3.93, 2.5, 0.85, "Lane: C4 (medium)", "sonnet + opus review", "", "lane c4");
-  node(6.7, 5.45, 2.5, 0.8, "Lane: C6 (hard bug)", "opus", "", "lane c6");
+  node(6.7, 5.45, 2.5, 0.8, "Lane: C6 (hard)", "opus", "", "lane c6");
   node(10.0, 2.9, 2.6, 0.9, "Hooks", "every tool call", "guard", "hooks");
   node(10.0, 4.6, 2.6, 0.9, "Token metrics", "kit-stats", "guard", "metrics");
   node(3.4, 5.6, 2.5, 0.85, "Brains", "patrol · reports", "", "brains");
