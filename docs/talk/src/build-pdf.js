@@ -85,7 +85,7 @@ slides.push(`<section style="background:${GRAD}">
   const lbl = (x, y, w, t) => text(x, y, w, 0.3, 11, `font-weight:700;color:${K.purple}`, t);
   contentSlide("How it works", "Leader, lanes, brains and guardrails", svg +
     node(0.7, 3.85, 2.0, 1.0, "Owner", "on the phone", "owner") + node(3.4, 3.85, 2.5, 1.0, "Leader session", "tmux + Remote Control", "lead") +
-    node(6.7, 2.3, 2.5, 0.85, "Lane: medium", "sonnet + opus review") + node(6.7, 3.93, 2.5, 0.85, "Lane: medium", "sonnet + opus review") + node(6.7, 5.45, 2.5, 0.8, "Lane: hard bug", "opus") +
+    node(6.7, 2.3, 2.5, 0.85, "Lane: C3 (medium)", "sonnet + opus review") + node(6.7, 3.93, 2.5, 0.85, "Lane: C4 (medium)", "sonnet + opus review") + node(6.7, 5.45, 2.5, 0.8, "Lane: C6 (hard bug)", "opus") +
     node(10.0, 2.9, 2.6, 0.9, "Hooks", "every tool call", "guard") + node(10.0, 4.6, 2.6, 0.9, "Token metrics", "kit-stats", "guard") + node(3.4, 5.6, 2.5, 0.85, "Brains", "patrol · reports") +
     lbl(2.72, 4.45, 0.7, "Remote") + lbl(6.5, 6.72, 1.5, "metrics") + lbl(4.75, 5.05, 1.5, "stuck? alert"));
 }
@@ -98,7 +98,7 @@ contentSlide("How it works", "Four roles, each knows what is not its job", table
   ["Lane", "One card, one worktree, one PR", "Merge or change permissions — the owner-guard hook blocks it"],
   ["Brains", "15-minute patrol, nightly review, morning report", "Become a second chat channel"],
 ], { cell: (j) => (j === 0 ? `font-weight:700;color:${K.purple}` : "") }) +
-  text(0.7, 6.5, 11.9, 0.5, 13, `font-style:italic;color:${K.body}`, "Brains never acts on its own: patrol, nightly review and morning report run only when scheduled with superadvisor cron --install (or when you run them by hand)."));
+  text(0.7, 6.6, 11.9, 0.4, 13, `font-style:italic;color:${K.body}`, "Brains' patrol, nightly review, morning report and idle-lane auto-close run on the schedule set with superadvisor cron --install."));
 
 // 6 loop
 contentSlide("How it works", "The leader’s loop, after every event", [

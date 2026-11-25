@@ -47,7 +47,7 @@ sequenceDiagram
   participant Lane as Lane (tmux + worktree)
   participant Hooks
   participant Events as events.jsonl
-  Owner->>Leader: "Làm thẻ C1 và C3" (Remote Control)
+  Owner->>Leader: "Làm thẻ C3 và C4" (Remote Control)
   Leader->>Leader: đọc brains/, phân loại S/M/L, viết brief
   Leader->>Lane: superadvisor lane open c3 --brief file
   Note over Lane: tạo worktree lane/c3 và session KIT_LANE=1

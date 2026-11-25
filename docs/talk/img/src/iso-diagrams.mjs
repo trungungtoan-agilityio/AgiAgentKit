@@ -143,9 +143,9 @@ function architecture() {
   S.label(owner, ["Owner", "on the phone"], { above: true });
   S.label(brains, ["Brains", "patrol · review · report"], { above: true });
   S.label(leader, ["Leader", "tmux + Remote Control"], { above: true });
-  S.label(lanes[0], ["Lane: medium", "sonnet + opus review"]);
-  S.label(lanes[1], ["Lane: medium", "sonnet + opus review"]);
-  S.label(lanes[2], ["Lane: hard bug", "opus"]);
+  S.label(lanes[0], ["Lane: C3 (medium)", "sonnet + opus review"]);
+  S.label(lanes[1], ["Lane: C4 (medium)", "sonnet + opus review"]);
+  S.label(lanes[2], ["Lane: C6 (hard bug)", "opus"]);
   S.label(hooks, ["Hooks", "every tool call"], { dx: 64, anchor: "start" });
   S.label(metrics, ["Token metrics", "kit-stats"], { dx: 46, anchor: "start" });
   S.text(0, 545, "brief", { dx: 8, dy: -6, anchor: "start" });

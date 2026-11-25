@@ -140,9 +140,9 @@ function gradientSvg(w, h) {
   const lbl = (x, y, w, t) => s.addText(t, { x, y, w, h: 0.3, fontSize: 11, bold: true, color: C.accent1, margin: 0, isTextBox: true, objectName: "label " + t });
   node(0.7, 3.85, 2.0, 1.0, "Owner", "on the phone", "owner", "owner");
   node(3.4, 3.85, 2.5, 1.0, "Leader session", "tmux + Remote Control", "lead", "leader");
-  node(6.7, 2.3, 2.5, 0.85, "Lane: medium", "sonnet + opus review", "", "lane medium a");
-  node(6.7, 3.93, 2.5, 0.85, "Lane: medium", "sonnet + opus review", "", "lane medium b");
-  node(6.7, 5.45, 2.5, 0.8, "Lane: hard bug", "opus", "", "lane hard");
+  node(6.7, 2.3, 2.5, 0.85, "Lane: C3 (medium)", "sonnet + opus review", "", "lane c3");
+  node(6.7, 3.93, 2.5, 0.85, "Lane: C4 (medium)", "sonnet + opus review", "", "lane c4");
+  node(6.7, 5.45, 2.5, 0.8, "Lane: C6 (hard bug)", "opus", "", "lane c6");
   node(10.0, 2.9, 2.6, 0.9, "Hooks", "every tool call", "guard", "hooks");
   node(10.0, 4.6, 2.6, 0.9, "Token metrics", "kit-stats", "guard", "metrics");
   node(3.4, 5.6, 2.5, 0.85, "Brains", "patrol · reports", "", "brains");
@@ -172,8 +172,8 @@ function gradientSvg(w, h) {
     ["Brains", "15-minute patrol, nightly review, morning report", "Become a second chat channel"],
   ].map((r, i) => i === 0 ? r : r.map((c, j) => ({ text: c, options: { bold: j === 0, color: j === 0 ? C.accent1 : C.text1 } })));
   s.addTable(roleRows, { x: 0.7, y: 2.45, w: 11.9, colW: [1.9, 5.6, 4.4], fontSize: 16, fontFace: THEME.bodyFontFace, color: C.text1, border: { type: "solid", pt: 1, color: HEX.accent6 }, rowH: 0.75, valign: "middle", margin: [0.08, 0.15, 0.08, 0.15], objectName: "roles table" });
-  s.addText("Brains never acts on its own: patrol, nightly review and morning report run only when scheduled with superadvisor cron --install (or when you run them by hand).", { x: 0.7, y: 6.5, w: 11.9, h: 0.5, fontSize: 13, italic: true, color: C.text2, margin: 0, valign: "top", isTextBox: true, objectName: "brains schedule footnote" });
-  s.addNotes("The key column is “Never does”. A lane cannot merge not because it promises not to, but because the owner-guard hook blocks it. Brains is not a chat session; it is the leader’s background memory and patrol — its patrol, nightly review and morning report run only on the schedule set by superadvisor cron --install, or when you run them by hand.");
+  s.addText("Brains' patrol, nightly review, morning report and idle-lane auto-close run on the schedule set with superadvisor cron --install.", { x: 0.7, y: 6.6, w: 11.9, h: 0.4, fontSize: 13, italic: true, color: C.text2, margin: 0, valign: "top", isTextBox: true, objectName: "brains schedule footnote" });
+  s.addNotes("The key column is “Never does”. A lane cannot merge not because it promises not to, but because the owner-guard hook blocks it. Brains is not a chat session; it is the leader’s background memory and patrol. Its patrol, nightly review, morning report and auto-close of idle merged lanes run on the schedule set by superadvisor cron --install, or when you run them by hand.");
 
   s = content("How it works", "How it works", "The leader’s loop, after every event");
   const loop = [

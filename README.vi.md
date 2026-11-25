@@ -49,7 +49,7 @@ Mở session leader (`tmux -L sa attach -t YOUR-PROJECT-LEAD`, hoặc Remote Con
 | **Bạn** | Quyết nghiệp vụ; duyệt merge, production, quyền | Giao việc tay cho từng lane |
 | **Leader** | Phân cỡ backlog, viết brief, mở lane, gỡ kẹt, báo cáo ≤ 5 dòng | Tự viết khối code lớn |
 | **Lane** | Một thẻ, một worktree, một PR | Merge, đẩy lên `main`/`master`/`dev`, sửa settings (hook `owner-guard` chặn) |
-| **Brains** | Thư mục `brains/`: quyền, quyết định đã chốt, hộp việc của leader | Tự hành động |
+| **Brains** | Thư mục `brains/`: quyền, quyết định đã chốt, hộp việc của leader | Thành kênh chat thứ hai |
 
 | Agent | Model | Dùng cho |
 |-------|-------|----------|

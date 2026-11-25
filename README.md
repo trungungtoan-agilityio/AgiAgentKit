@@ -63,7 +63,7 @@ flowchart LR
 | **You** | Decide product; approve merges, production, permissions | Hand-feed work to each lane |
 | **Leader** | Sizes the backlog, writes briefs, opens lanes, unblocks them, reports in 5 lines | Write large blocks of code itself |
 | **Lane** | One card, one worktree, one PR | Merge, push to `main`/`master`/`dev`, edit settings (the `owner-guard` hook blocks it) |
-| **Brains** | `brains/` folder: the leader's permissions, decisions and inbox | Act on its own |
+| **Brains** | `brains/` folder: the leader's permissions, decisions and inbox | Become a second chat channel |
 
 | Agent | Model | Used for |
 |-------|-------|----------|
