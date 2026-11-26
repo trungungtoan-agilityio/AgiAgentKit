@@ -101,6 +101,7 @@ t "lane open chép brief" has "$P/brains/.local/briefs/fix-login.md" "Làm thẻ
 t "lane open env KIT_LANE=1" has "$LOG" "ARG KIT_LANE=1"
 t "lane open env compaction 200000" has "$LOG" "ARG CLAUDE_CODE_AUTO_COMPACT_WINDOW=200000"
 t "lane open có KIT_LANE_BRIEF" has "$LOG" "ARG KIT_LANE_BRIEF="
+t "lane open protects the integration branch" has "$LOG" "ARG KIT_PROTECTED_BRANCHES=main"
 t "lane open --remote-control PROJ-FIX-LOGIN" has "$LOG" "ARG PROJ-FIX-LOGIN"
 t "lane open có --model sonnet" has "$LOG" "ARG sonnet"
 t "lane open đưa brief vào prompt" has "$LOG" "Xong khi test xanh."
@@ -198,7 +199,7 @@ if [ "$1" = -l ]; then cat "$FAKE_DIR/crontab" 2>/dev/null || { echo "no crontab
 EOF
 chmod +x "$TMP/bin/launchctl" "$TMP/bin/crontab"
 printf '#!/usr/bin/env bash\necho "crontab: permission denied" >&2; exit 1\n' > "$TMP/bin/badcrontab"; chmod +x "$TMP/bin/badcrontab"
-export SA_LAUNCHD_DIR="$TMP/la" SA_LAUNCHCTL_BIN="$TMP/bin/launchctl" SA_CRONTAB_BIN="$TMP/bin/crontab"
+export SA_LAUNCHD_DIR="$TMP/la" SA_LAUNCHD_LOG_DIR="$TMP/logs" SA_LAUNCHCTL_BIN="$TMP/bin/launchctl" SA_CRONTAB_BIN="$TMP/bin/crontab"
 SA_CRON_MODE=launchd "$SA" cron --install --dry-run > "$TMP/cd.out" 2>&1
 t "launchd --dry-run prints a plist" has "$TMP/cd.out" "<integer>900</integer>"
 t "launchd --dry-run writes nothing" test ! -d "$TMP/la"
@@ -208,6 +209,8 @@ t "launchd install is idempotent (3 plists)" test "$(ls "$TMP/la" | wc -l | tr -
 t "launchd patrol job runs patrol --clean --apply" has "$TMP/la/com.agiagentkit.superadvisor.proj.patrol.plist" "<string>--apply</string>"
 t "launchd review job at 22:00" has "$TMP/la/com.agiagentkit.superadvisor.proj.review.plist" "<integer>22</integer>"
 t "launchd bootstrap called" has "$FAKE_DIR/launchctl.log" "bootstrap gui/"
+t "launchd log goes to the log dir (not under the project)" has "$TMP/la/com.agiagentkit.superadvisor.proj.patrol.plist" "$TMP/logs/superadvisor-proj-patrol.log"
+t "launchd plist sets no WorkingDirectory" lacks "$TMP/la/com.agiagentkit.superadvisor.proj.patrol.plist" "WorkingDirectory"
 SA_CRON_MODE=launchd "$SA" cron --uninstall --project "$P" > /dev/null 2>&1
 t "launchd uninstall removes plists" test -z "$(ls "$TMP/la")"
 printf '0 1 * * * echo keep\n' > "$FAKE_DIR/crontab"; cp "$FAKE_DIR/crontab" "$TMP/ct.before"
@@ -228,7 +231,9 @@ t "crontab -l failure aborts the install" has "$TMP/ctbad.out" "crontab -l faile
 echo "== cron / help"
 "$SA" cron > "$TMP/cron.out" 2>&1
 t "cron in dòng patrol */15" has "$TMP/cron.out" "*/15 * * * *"
-t "cron in dòng report 06:00" has "$TMP/cron.out" "0 6 * * *"
+t "cron sample matches the installed schedule (report 08:00)" has "$TMP/cron.out" "0 8 * * *"
+t "cron sample runs patrol --clean --apply" has "$TMP/cron.out" "patrol --clean --apply"
+t "cron sample includes the launchd plists" has "$TMP/cron.out" "<integer>22</integer>"
 "$SA" --help > "$TMP/help.out" 2>&1
 t "--help liệt kê lane open" has "$TMP/help.out" "lane open"
 

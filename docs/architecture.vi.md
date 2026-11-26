@@ -70,7 +70,7 @@ sequenceDiagram
 Ghi chú cho từng bước:
 
 - **`lane open`** kiểm tên (a-z, 0-9, gạch ngang), chép brief vào `brains/.local/briefs/`, tạo worktree và nhánh
-  `lane/<tên>` (dùng lại nếu đã có), rồi mở session tmux với `KIT_LANE=1`, `KIT_LANE_NAME`, `KIT_LANE_BRIEF`. Model
+  `lane/<tên>` (dùng lại nếu đã có), rồi mở session tmux với `KIT_LANE=1`, `KIT_LANE_NAME`, `KIT_LANE_BRIEF`, `KIT_PROTECTED_BRANCHES` (nhánh tích hợp, cho `owner-guard`). Model
   mặc định là sonnet; `--model` để đổi. `--dry-run` in lệnh mà không chạy.
 - **Hook** chạy trong chính session của lane. `owner-guard` chỉ hoạt động khi `KIT_LANE=1` và luôn **deny** (không có
   ai để hỏi); các hook còn lại **deny** ở auto mode và **ask** ở chế độ khác.

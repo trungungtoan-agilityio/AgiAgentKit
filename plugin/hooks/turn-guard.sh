@@ -2,6 +2,12 @@
 # PreToolUse hook (no matcher): counts tool calls of the builder/tester subagents and caps them.
 # Long subagent runs are the biggest token sink: warn early, block edits past the limit.
 #   - Subagents only (non-empty .agent_id); the main session is never counted.
+#   - Agent opened with a `name` (agent teams): .agent_type may carry the name; the real type is in the
+#     subagent meta file (spawnedAgentType, else customAgentType) at
+#     <transcript_path without .jsonl>/subagents/agent-<agent_id>.meta.json (or beside the transcript when
+#     transcript_path is already subagents/agent-*.jsonl). Only an absolute .jsonl path, an agent_id of
+#     [A-Za-z0-9_-] and a regular, non-symlink meta file are read (first 64 KiB). A builder/tester found
+#     this way is reminded at WARN/WARN2 but never blocked. No meta / no match: not counted.
 #   - Counter file: ${TMPDIR:-/tmp}/claude-turn-guard/<session>-<agent> (+1 per call).
 #   - Env: TURN_GUARD_WARN=60, TURN_GUARD_WARN2=90, TURN_GUARD_DENY=130, TURN_GUARD_OFF=1 (disable).
 #   - At WARN / WARN2: a reminder to stop at a safe point. From DENY: Edit/Write/Bash are
@@ -13,11 +19,24 @@ command -v jq >/dev/null 2>&1 || exit 0
 . "$(dirname "$0")/../scripts/kit-hook-lib.sh"
 
 # One jq call, fields joined by 0x1f so empty fields survive `read`.
-IFS=$'\x1f' read -r EV AID ATYPE SID TOOL < <(printf '%s' "$INPUT" | jq -r '[.hook_event_name // "", .agent_id // "", .agent_type // "", .session_id // "", .tool_name // ""] | join("\u001f")' 2>/dev/null)
+IFS=$'\x1f' read -r EV AID ATYPE SID TOOL TPATH < <(printf '%s' "$INPUT" | jq -r '[.hook_event_name // "", .agent_id // "", .agent_type // "", .session_id // "", .tool_name // "", .transcript_path // ""] | join("\u001f")' 2>/dev/null)
 [ "$EV" = PreToolUse ] || exit 0
 [ -n "$AID" ] || exit 0
-ATYPE="${ATYPE#*:}"   # drop a plugin prefix "x:"
-case "$ATYPE" in builder|tester) ;; *) exit 0 ;; esac
+guarded() { case "${1#*:}" in builder|tester) return 0 ;; esac; return 1; }   # drops a plugin prefix "x:"
+VIA_META=0
+if ! guarded "$ATYPE"; then
+  # Named agent: the real type is in the subagent meta file (see header).
+  case "$AID" in *[!A-Za-z0-9_-]*) exit 0 ;; esac
+  case "$TPATH" in
+    /*/subagents/agent-*.jsonl) META="${TPATH%/*}/agent-$AID.meta.json" ;;   # the subagent's own transcript
+    /*.jsonl) META="${TPATH%.jsonl}/subagents/agent-$AID.meta.json" ;;      # the main session transcript
+    *) exit 0 ;;
+  esac
+  [ -f "$META" ] && [ ! -L "$META" ] || exit 0
+  REAL=$(head -c 65536 "$META" | jq -r '[.spawnedAgentType, .customAgentType] | map(strings | select(length > 0)) | .[0] // ""' 2>/dev/null | head -n 1)
+  guarded "$REAL" || exit 0
+  VIA_META=1
+fi
 
 num() { case "$1" in ''|*[!0-9]*) echo "$2" ;; *) echo "$1" ;; esac; }
 WARN=$(num "${TURN_GUARD_WARN:-}" 60)
@@ -36,7 +55,7 @@ N=$(cat "$F" 2>/dev/null); N=$(num "$N" 0); N=$((10#$N + 1))
 TMP=$(mktemp "$DIR/.tmp.XXXXXX" 2>/dev/null) || exit 0
 printf '%s\n' "$N" > "$TMP" && mv -f "$TMP" "$F" || { rm -f "$TMP"; exit 0; }
 
-if [ "$N" -ge "$DENY" ]; then
+if [ "$N" -ge "$DENY" ] && [ "$VIA_META" = 0 ]; then
   case "$TOOL" in
     Edit|Write|MultiEdit|NotebookEdit|Bash)
       kit_decide "Đã đạt $DENY lượt gọi tool (token budget): $TOOL bị chặn (tool-call cap reached)." \
@@ -47,6 +66,7 @@ fi
 
 if [ "$N" -eq "$WARN" ] || [ "$N" -eq "$WARN2" ]; then
   MSG="Subagent đã gọi $N tool (token budget): dừng ở điểm an toàn, commit WIP nếu có sửa, rồi trả tóm tắt ngắn (đã làm / còn lại / file nào) cho leader (stop at a safe point and summarize). Từ lần gọi thứ $DENY, Edit/Write/Bash sẽ bị chặn."
+  [ "$VIA_META" = 1 ] && MSG="Subagent đã gọi $N tool (token budget): dừng ở điểm an toàn, commit WIP nếu có sửa, rồi trả tóm tắt ngắn (đã làm / còn lại / file nào) để leader giao lát mới cho agent mới (stop at a safe point and summarize)."
   jq -n --arg m "$MSG" '{hookSpecificOutput: {hookEventName: "PreToolUse", additionalContext: $m}}'
 fi
 exit 0
