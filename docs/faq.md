@@ -32,7 +32,7 @@ write a narrower brief and reopen it with the same name. After a second stall it
 No. It is a guard rail against a lane doing owner work by habit, not a control against a hostile agent. It runs only
 when `KIT_LANE=1`, which `superadvisor lane open` sets in the environment. It only looks at Bash, Edit, Write,
 MultiEdit and NotebookEdit calls, and only at direct command segments: text inside quotes is treated as data, so a command wrapped in
-`bash -c '...'`, a script file or another language is not inspected (of `gh api`, any write is denied and reads pass). Without `jq` every hook lets everything
+`bash -c '...'`, a script file or another language is not inspected (of `gh api`, a write method, a field without `-X GET`, or `graphql` is denied; a plain GET passes). Without `jq` every hook lets everything
 through. The leader is not a lane, so `owner-guard` never applies to it; its merge rules are instructions in
 `brains/lead.md`. For a real boundary use branch protection on the integration branch, required reviews, and tokens
 with the smallest scope you can give the machine.

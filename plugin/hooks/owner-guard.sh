@@ -3,8 +3,8 @@
 # actions. A lane is a worker session started by a leader; merging, publishing to a shared branch, releasing
 # and changing the kit's own rules are the owner's calls, so a lane reports to the leader instead.
 # Denied while KIT_LANE=1 (there is nobody to ask, so always deny):
-#   - gh pr merge; gh api writes (-X POST/PUT/PATCH/DELETE, -f/-F/--field/--raw-field/--input, graphql) — a
-#     plain GET, such as reading pulls/<n>/merge, passes;
+#   - gh pr merge; gh api writes (-X POST/PUT/PATCH/DELETE; -f/-F/--field/--raw-field/--input or graphql without
+#     -X GET) — a plain GET, such as reading pulls/<n>/merge, passes;
 #   - printing credentials: gh auth token, gh auth status -t, git credential;
 #   - git push naming a protected branch (main / master / dev, plus KIT_PROTECTED_BRANCHES, which superadvisor
 #     sets to the integration branch; incl. HEAD:main, refs/heads/main, +main);
@@ -15,7 +15,7 @@
 #   - writing .claude/settings*.json, .claude/hooks/**, brains/lead.md, brains/config.json or .mcp.json
 #     (Edit/Write/MultiEdit/NotebookEdit, or a Bash redirect / tee / mv / cp / ln / rm / install / sed -i / perl -i).
 #     Paths and commands are matched case-insensitively.
-# Only real command segments count (text inside quotes is data). Not a lane: pass. No jq: pass. Always exit 0.
+# Only real command segments count (quoted separators and quoted prose are data). Not a lane: pass. No jq: pass. Always exit 0.
 # A safety net for honest mistakes, not a security boundary: branch protection on the remote is the real lock.
 INPUT=$(cat)
 [ "${KIT_LANE:-}" = 1 ] || exit 0
@@ -57,10 +57,16 @@ CMD=$(printf '%s' "$INPUT" | jq -r '.tool_input.command // ""' 2>/dev/null)
 if command -v perl >/dev/null 2>&1; then
   CMD=$(printf '%s' "$CMD" | perl -0777 -pe 's/"([^"]*)"|\x27([^\x27]*)\x27/my $q = defined $1 ? "\"" : "\x27"; my $x = defined $1 ? $1 : $2; $x =~ s{[;|&\n<]}{_}g; $q.$x.$q/ge')
 fi
-# Heredoc: the lines after the first one holding "<<" are its body (data); "<<<" stays on its line.
-case "$CMD" in *'<<'*) CMD=$(printf '%s\n' "$CMD" | awk '{print} /<</{exit}') ;; esac
+# Heredoc: the lines after the first one opening a heredoc (<<WORD, <<'WORD', <<-WORD) are its body (data) and are not
+# checked; a here-string (<<<) is not a heredoc.
+case "$CMD" in *'<<'*) CMD=$(printf '%s\n' "$CMD" | awk '{print} /<<-?[[:space:]]*["\047]?[A-Za-z_]/ && !/<<</{exit}') ;; esac
 CWD=$(printf '%s' "$INPUT" | jq -r '.cwd // ""' 2>/dev/null)
-RE_WRITE='((^|[[:space:]])(tee|mv|cp|ln|rm|install|sed[[:space:]]+-i[^[:space:]]*|perl[[:space:]]+-[a-z]*i[a-z]*)[[:space:]]|(^|[^-])>)[^;&|]*(\.claude/+settings[a-z.]*\.json|\.claude/+hooks/|brains/+lead\.md|brains/+config\.json|\.mcp\.json)'
+RE_WRITE_PATH='(\.claude/+settings[a-z.]*\.json|\.claude/+hooks/|brains/+lead\.md|brains/+config\.json|\.mcp\.json)'
+# A writer command at the start of the segment, or a redirect / tee anywhere, followed by a protected path.
+RE_WRITER='(tee|mv|rm|sed[[:space:]]+-i[^[:space:]]*|perl[[:space:]]+(-[^[:space:]]+[[:space:]]+)*-[pn]?i)[[:space:]][^;&|]*'
+# cp / ln / install write only their last argument, so copying a protected file out is fine.
+RE_COPY='(cp|ln|install)[[:space:]].*[[:space:]][^[:space:]]*'
+RE_REDIR='(\||(^|[^-])>)[[:space:]]*(tee[[:space:]]+(-a[[:space:]]+)?)?[^;&|[:space:]]*'
 RE_PRE='^[[:space:]({]*((env|command|exec|nohup|time|sudo)[[:space:]]+(-[^[:space:]]+[[:space:]]+)*)*([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*([^[:space:]]*/)?'
 RE_GITOPT='([[:space:]]+(-[Cc][[:space:]]+[^[:space:]]+|--[a-z-]+(=[^[:space:]]*)?))*'
 PUSH_LONG=" --force --force-with-lease --force-if-includes --mirror --all --delete --no-verify --tags --follow-tags --prune "
@@ -72,9 +78,11 @@ while IFS= read -r seg; do
   fi
   if [[ "$seg" =~ ${RE_PRE}gh[[:space:]]+api[[:space:]] ]]; then
     # A lane only reads through gh api: any write method, field or GraphQL call is the owner's.
+    # -X GET sends fields as a query string, so it stays a read.
     if [[ "$seg" =~ [[:space:]](-X|--method)[[:space:]=]*[\"\']?(post|put|patch|delete) ]] \
-      || [[ "$seg" =~ [[:space:]](-[fF]|--field|--raw-field|--input)([[:space:]=]|$) ]] \
-      || [[ "$seg" =~ [[:space:]][\"\']?graphql([\"\'[:space:]]|$) ]]; then
+      || { ! [[ "$seg" =~ [[:space:]](-X|--method)[[:space:]=]*[\"\']?get ]] \
+           && { [[ "$seg" =~ [[:space:]](-[fF]|--field|--raw-field|--input)([[:space:]=]|$) ]] \
+                || [[ "$seg" =~ [[:space:]][\"\']?graphql([\"\'[:space:]]|$) ]]; }; }; then
       deny "$MSG gh api trong lane chỉ được đọc (no writes, merges or GraphQL through gh api)."
     fi
   fi
@@ -112,7 +120,10 @@ while IFS= read -r seg; do
       [ -n "$b" ] && case "$PROTECTED" in *" $b "*) deny "$MSG Không git push lên $b." ;; esac
     done
   fi
-  wseg="${seg//template\/brains\//template/_/}"   # the kit's own template/brains/ is not a live project file
-  if [[ "$wseg" =~ $RE_WRITE ]]; then deny "$MSG Không sửa settings, hook, brains/lead.md, brains/config.json hay .mcp.json."; fi
+  # Quoted text with a space in it is prose (a commit message, a PR body), not a path: blank it. The kit's own
+  # template/brains/ is not a live project file.
+  wseg=$(printf '%s' "$seg" | tr 'A-Z' 'a-z' | sed -e 's#template/brains/#template/_/#g' -e 's/"[^"]*[[:space:]][^"]*"/Q/g' -e "s/'[^']*[[:space:]][^']*'/Q/g")
+  if [[ "$wseg" =~ ${RE_PRE}${RE_WRITER}${RE_WRITE_PATH} ]] || [[ "$wseg" =~ ${RE_REDIR}${RE_WRITE_PATH} ]] \
+    || [[ "$wseg" =~ ${RE_PRE}${RE_COPY}${RE_WRITE_PATH}[^[:space:]]*[[:space:]]*$ ]]; then deny "$MSG Không sửa settings, hook, brains/lead.md, brains/config.json hay .mcp.json."; fi
 done < <(printf '%s\n' "$CMD" | tr ';&|' '\n\n\n')
 exit 0

@@ -88,9 +88,9 @@ Options: `--model <id>` picks the lane model (without it, Claude Code's default 
 puts the worktree elsewhere, `--dry-run` prints the `git worktree add`, the `cp` and the tmux command without running
 them.
 
-While the lane works, every tool call goes through the hooks: `owner-guard` denies merges, pushes to
-`main`/`master`/`dev` or the integration branch, force/tag/release pushes and writes to `.claude/settings*.json`,
-`.claude/hooks/` and `brains/lead.md`; `test-budget` denies whole-suite test runs; `turn-guard`
+While the lane works, every tool call goes through the hooks: `owner-guard` denies merges, `gh api` writes,
+pushes to `main`/`master`/`dev` or the integration branch, force/delete/tag pushes, releases, printing credentials and
+writes to `.claude/settings*.json`, `.claude/hooks/`, `brains/lead.md`, `brains/config.json` and `.mcp.json`; `test-budget` denies whole-suite test runs; `turn-guard`
 caps `builder`/`tester` runs; `agent-routing` keeps delegation on the five pinned agents. The metrics hooks append
 token counts to `.claude/metrics/events.jsonl` in the main checkout.
 

@@ -124,14 +124,18 @@ for c in 'gh pr merge 12 --squash' 'git push origin main' 'git push origin HEAD:
   'gh api -X DELETE repos/o/r/branches/main/protection' 'gh api --method=PATCH repos/o/r/git/refs/heads/main' \
   'gh auth status --show-token' 'git credential fill' 'true <<< x; gh pr merge 1' 'echo x > .Claude/settings.json' \
   'ln -sf /tmp/x .claude/settings.json' 'rm .claude/hooks/owner-guard.sh' 'echo {} > brains/config.json' 'echo {} > .mcp.json' \
-  'cp template/brains/lead.md brains/lead.md'; do
+  'cp template/brains/lead.md brains/lead.md' 'cp /tmp/x ".claude/hooks/a.sh"' 'echo x | tee -a .claude/settings.local.json' \
+  'perl -pi -e s/a/b/ .claude/hooks/x.sh' 'sudo mv /tmp/x .mcp.json' $'read x <<< y\ngh pr merge 1'; do
   out="$(bash_in "$c" | KIT_LANE=1 bash "$P/owner-guard.sh")"; chk "owner-guard: $c" deny "$out"
 done
 has "message tells the lane to report to the leader" "$out" '.hookSpecificOutput.permissionDecisionReason | test("báo leader")'
 for c in 'git push origin feature/dev' 'git push -u origin lane/card-1' 'git push --set-upstream origin lane/c' 'gh pr create --fill' 'git commit -m "gh pr merge later"' 'cat .claude/settings.json' \
   'git commit -m "docs: steering rules in brains/lead.md"' 'git commit -m "chore: sync hooks -> .claude/hooks/a.sh"' \
   'gh api repos/o/r/pulls/3/merge' 'gh api -X GET repos/o/r/pulls' 'gh auth status' 'git push origin lane/fix-dev' \
-  'cat brains/config.json' 'cp template/brains/lead.md /tmp/x' 'echo x >> template/brains/lead.md'; do
+  'cat brains/config.json' 'cp template/brains/lead.md /tmp/x' 'echo x >> template/brains/lead.md' \
+  'git commit -m "chore: rm stale copy in .claude/hooks/x.sh"' 'gh pr create --title x --body "deny rm on .claude/hooks/"' \
+  "gh api -X GET search/issues -f q='repo:o/r is:open'" "perl -Mstrict -ne 'print' .claude/hooks/x.sh" \
+  'cp .claude/hooks/a.sh /tmp/bak' 'rm -rf node_modules' 'git push -u origin HEAD' 'echo $((1 << 2))'; do
   chk "owner-guard: $c" none "$(bash_in "$c" | KIT_LANE=1 bash "$P/owner-guard.sh")"
 done
 chk "owner-guard: Edit settings.json" deny "$(edit_in Edit /proj/.claude/settings.json | KIT_LANE=1 bash "$P/owner-guard.sh")"
