@@ -97,15 +97,17 @@ lane_wt() {
 has_session() { tm has-session -t "=$1" >/dev/null 2>&1; }
 
 # build_cmd <session> <cwd> <prompt> <model> <brief>: fill CMD with the tmux new-session argv.
-# A non-empty <brief> makes it a lane (KIT_LANE env + compaction window); otherwise it is the leader.
+# A non-empty <brief> makes it a lane (KIT_LANE env, the caller's $integ as KIT_PROTECTED_BRANCHES for
+# owner-guard, compaction window); otherwise it is the leader.
 build_cmd() {
   local sess="$1" cwd="$2" prompt="$3" model="$4" brief="$5"
   CMD=("$TMUX_BIN" -u -L "$SOCK" new-session -d -s "$sess" -x 200 -y 50 -c "$cwd"
        env -u CLAUDECODE -u CLAUDE_CODE_ENTRYPOINT)
   if [ -n "$brief" ]; then
-    CMD+=(KIT_LANE=1 "KIT_LANE_NAME=$sess" "KIT_LANE_BRIEF=$brief" CLAUDE_CODE_AUTO_COMPACT_WINDOW=200000)
+    CMD+=(KIT_LANE=1 "KIT_LANE_NAME=$sess" "KIT_LANE_BRIEF=$brief" "KIT_PROTECTED_BRANCHES=${integ:-}"
+          CLAUDE_CODE_AUTO_COMPACT_WINDOW=200000)
   else
-    CMD+=(-u KIT_LANE -u KIT_LANE_BRIEF)
+    CMD+=(-u KIT_LANE -u KIT_LANE_BRIEF -u KIT_PROTECTED_BRANCHES)
   fi
   CMD+=("$CLAUDE_BIN" --remote-control "$sess" --permission-mode auto)
   if [ -n "$model" ]; then CMD+=(--model "$model"); fi
@@ -484,6 +486,11 @@ report|08:00|report"
 
 xml() { printf '%s' "$1" | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g'; }
 
+# launchd opens the log files before the job starts and has no Full Disk Access: a log path under
+# ~/Documents, ~/Desktop, ~/Downloads or an external volume makes the job exit 78 (EX_CONFIG) without a trace.
+# So launchd logs go to ~/Library/Logs, and the plist sets no WorkingDirectory.
+launchd_log() { printf '%s/superadvisor-%s-%s.log' "${SA_LAUNCHD_LOG_DIR:-$HOME/Library/Logs}" "$(printf '%s' "$PROJ" | tr 'A-Z' 'a-z')" "$1"; }
+
 plist_for() { # plist_for <label> <when> <job> <args>
   local a
   printf '<?xml version="1.0" encoding="UTF-8"?>\n<plist version="1.0"><dict>\n'
@@ -496,8 +503,8 @@ plist_for() { # plist_for <label> <when> <job> <args>
     *) printf '  <key>StartInterval</key><integer>%s</integer>\n' "$2" ;;
   esac
   printf '  <key>EnvironmentVariables</key><dict><key>SA_PROJECT</key><string>%s</string><key>PATH</key><string>%s</string></dict>\n' "$(xml "$ROOT")" "$CRON_PATH"
-  printf '  <key>StandardOutPath</key><string>%s</string>\n' "$(xml "$LOCAL/cron-$3.log")"
-  printf '  <key>StandardErrorPath</key><string>%s</string>\n</dict></plist>\n' "$(xml "$LOCAL/cron-$3.log")"
+  printf '  <key>StandardOutPath</key><string>%s</string>\n' "$(xml "$(launchd_log "$3")")"
+  printf '  <key>StandardErrorPath</key><string>%s</string>\n</dict></plist>\n' "$(xml "$(launchd_log "$3")")"
 }
 
 cron_launchd() { # cron_launchd <install|uninstall> <dry>
@@ -515,26 +522,31 @@ cron_launchd() { # cron_launchd <install|uninstall> <dry>
     fi
     "$lc" bootout "$dom/$label" >/dev/null 2>&1 || true
     if [ "$1" = uninstall ]; then rm -f "$f"; say "Removed $label"; continue; fi
-    mkdir -p "$dir" "$LOCAL"
+    mkdir -p "$dir" "$(dirname "$(launchd_log x)")"
     plist_for "$label" "$when" "$job" "$args" > "$f"
     "$lc" bootstrap "$dom" "$f"
     say "Installed $label ($when)"
   done <<<"$CRON_JOBS"
 }
 
+crontab_block() { # the marked crontab block for $PROJ
+  local job when args spec
+  printf '%s\nPATH=%s\n' "# superadvisor:begin $PROJ" "$CRON_PATH"
+  while IFS='|' read -r job when args; do
+    case "$when" in *:*) spec="$((10#${when#*:})) $((10#${when%:*})) * * *" ;; *) spec="*/$((when / 60)) * * * *" ;; esac
+    printf '%s cd %q && SA_PROJECT=%q %q %s >> %q 2>&1\n' "$spec" "$ROOT" "$ROOT" "$SA_BIN" "$args" "$LOCAL/cron-$job.log"
+  done <<<"$CRON_JOBS"
+  printf '%s' "# superadvisor:end $PROJ"
+}
+
 cron_crontab() { # cron_crontab <install|uninstall> <dry>
-  local ct="${SA_CRONTAB_BIN:-crontab}" b="# superadvisor:begin $PROJ" e="# superadvisor:end $PROJ" cur new job when args spec
+  local ct="${SA_CRONTAB_BIN:-crontab}" b="# superadvisor:begin $PROJ" e="# superadvisor:end $PROJ" cur new
   cur="$("$ct" -l 2>&1)" || case "$cur" in *"no crontab"*) cur="" ;; *) die "crontab -l failed: $cur" ;; esac
   if printf '%s\n' "$cur" | grep -qxF "$b" && ! printf '%s\n' "$cur" | grep -qxF "$e"; then die "crontab has '$b' without '$e': fix it by hand."; fi
   new="$(printf '%s\n' "$cur" | awk -v b="$b" -v e="$e" '$0==b{s=1;next} $0==e{s=0;next} !s')"
   if [ "$1" = install ]; then
     [ -z "$new" ] || new="$new"$'\n'
-    new="$new$b"$'\n'"PATH=$CRON_PATH"
-    while IFS='|' read -r job when args; do
-      case "$when" in *:*) spec="$((10#${when#*:})) $((10#${when%:*})) * * *" ;; *) spec="*/$((when / 60)) * * * *" ;; esac
-      new="$new"$'\n'"$spec cd $(printf '%q' "$ROOT") && SA_PROJECT=$(printf '%q' "$ROOT") $(printf '%q' "$SA_BIN") $args >> $(printf '%q' "$LOCAL/cron-$job.log") 2>&1"
-    done <<<"$CRON_JOBS"
-    new="$new"$'\n'"$e"
+    new="$new$(crontab_block)"
   fi
   if [ "$2" = 1 ]; then printf '%s\n' "$new"; return 0; fi
   mkdir -p "$LOCAL"
@@ -563,26 +575,12 @@ cmd_cron() {
     if [ "$mode" = launchd ]; then cron_launchd "$act" "$dry"; else cron_crontab "$act" "$dry"; fi
     return 0
   fi
-  cat <<EOF
-# Mẫu để anh tự dán vào 'crontab -e'. Or install the schedule with: superadvisor cron --install
-PATH=/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin
-*/15 * * * * cd $ROOT && SA_PROJECT=$ROOT $SA_BIN patrol >> $LOCAL/cron.log 2>&1
-0 6 * * *    cd $ROOT && SA_PROJECT=$ROOT $SA_BIN report >> $LOCAL/report.log 2>&1
-
-# Mẫu launchd (macOS): lưu thành ~/Library/LaunchAgents/superadvisor.patrol.plist rồi 'launchctl load'.
-# Tuần tra mỗi 15 phút; với report đổi StartInterval thành StartCalendarInterval {Hour=6, Minute=0}.
-<?xml version="1.0" encoding="UTF-8"?>
-<plist version="1.0"><dict>
-  <key>Label</key><string>superadvisor.patrol</string>
-  <key>ProgramArguments</key><array>
-    <string>$SA_BIN</string><string>patrol</string></array>
-  <key>EnvironmentVariables</key><dict>
-    <key>SA_PROJECT</key><string>$ROOT</string>
-    <key>PATH</key><string>/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin</string></dict>
-  <key>StartInterval</key><integer>900</integer>
-  <key>StandardOutPath</key><string>$LOCAL/cron.log</string>
-</dict></plist>
-EOF
+  say "# Samples of the schedule 'superadvisor cron --install' writes (nothing is installed now)."
+  say "# crontab (Linux; add with 'crontab -e'):"
+  crontab_block; say ""
+  say ""
+  say "# launchd (macOS):"
+  cron_launchd install 1
 }
 
 # ---------------------------------------------------------------- main

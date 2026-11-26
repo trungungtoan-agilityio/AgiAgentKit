@@ -30,9 +30,9 @@ write a narrower brief and reopen it with the same name. After a second stall it
 ### Is `owner-guard` a security boundary?
 
 No. It is a guard rail against a lane doing owner work by habit, not a control against a hostile agent. It runs only
-when `KIT_LANE=1`, which `superadvisor lane open` sets in the environment. It only looks at Bash, Edit, Write and
-MultiEdit calls, and only at direct command segments: text inside quotes is treated as data, so a command wrapped in
-`bash -c '...'`, a script file, `gh api` or another language is not inspected. Without `jq` every hook lets everything
+when `KIT_LANE=1`, which `superadvisor lane open` sets in the environment. It only looks at Bash, Edit, Write,
+MultiEdit and NotebookEdit calls, and only at direct command segments: text inside quotes is treated as data, so a command wrapped in
+`bash -c '...'`, a script file or another language is not inspected (of `gh api`, a write method, a field without `-X GET`, or `graphql` is denied; a plain GET passes). Without `jq` every hook lets everything
 through. The leader is not a lane, so `owner-guard` never applies to it; its merge rules are instructions in
 `brains/lead.md`. For a real boundary use branch protection on the integration branch, required reviews, and tokens
 with the smallest scope you can give the machine.
@@ -65,7 +65,7 @@ By default, only a PR you name, for example `M 12`, and only on the head that wa
 asks again. The minimum is green tests on that exact head and no High/Critical findings left after at most two review
 rounds. It never releases, deploys, tags, force pushes, changes permissions or deletes data that cannot be recovered.
 You can widen or narrow this by editing `brains/lead.md`. Lanes can never merge: `owner-guard` denies `gh pr merge`
-inside a lane.
+and any `gh api` write inside a lane, as well as force, delete and tag pushes and `gh release` changes.
 
 ### How do I stop everything?
 

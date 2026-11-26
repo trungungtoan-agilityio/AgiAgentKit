@@ -80,7 +80,7 @@ What happens, in order:
 4. Worktree `.claude/worktrees/c3` is created on a new branch `lane/c3` from the integration branch. If the folder
    already exists it is reused; if the branch already exists it is checked out.
 5. The brief is copied to `brains/.local/briefs/c3.md`.
-6. tmux session `DEMO-LIBRARY-C3` starts in the worktree with `KIT_LANE=1`, `KIT_LANE_NAME`, `KIT_LANE_BRIEF` and
+6. tmux session `DEMO-LIBRARY-C3` starts in the worktree with `KIT_LANE=1`, `KIT_LANE_NAME`, `KIT_LANE_BRIEF`, `KIT_PROTECTED_BRANCHES` (the integration branch) and
    `CLAUDE_CODE_AUTO_COMPACT_WINDOW=200000`, running Claude Code in auto mode with Remote Control. The prompt tells it
    it is a lane (one card, one worktree, one PR, never merge) followed by the brief text.
 
@@ -88,8 +88,9 @@ Options: `--model <id>` picks the lane model (without it, Claude Code's default 
 puts the worktree elsewhere, `--dry-run` prints the `git worktree add`, the `cp` and the tmux command without running
 them.
 
-While the lane works, every tool call goes through the hooks: `owner-guard` denies merges, pushes to
-`main`/`master`/`dev` and writes to `.claude/settings*.json`; `test-budget` denies whole-suite test runs; `turn-guard`
+While the lane works, every tool call goes through the hooks: `owner-guard` denies merges, `gh api` writes,
+pushes to `main`/`master`/`dev` or the integration branch, force/delete/tag pushes, releases, printing credentials and
+writes to `.claude/settings*.json`, `.claude/hooks/`, `brains/lead.md`, `brains/config.json` and `.mcp.json`; `test-budget` denies whole-suite test runs; `turn-guard`
 caps `builder`/`tester` runs; `agent-routing` keeps delegation on the five pinned agents. The metrics hooks append
 token counts to `.claude/metrics/events.jsonl` in the main checkout.
 

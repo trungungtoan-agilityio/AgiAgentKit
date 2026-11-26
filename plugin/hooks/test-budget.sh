@@ -5,6 +5,8 @@
 # A file, directory, name filter (-t, -k, -m), --changed, --lf or -run counts as a selector.
 # Passes when the command contains FULL_SUITE_OK=1 (only when the user asked for the full suite).
 # Only real command segments count (split on && || ; |); text inside quotes and heredocs is data.
+# Wrappers are seen through: env assignments, npx/pnpx/bunx, env, time, nohup, exec, command, sudo,
+# nice [-n N], timeout [opts] <duration>.
 # Pragmatic: may miss (false negative), never blocks a selective run. No jq: allow. Always exit 0.
 INPUT=$(cat)
 command -v jq >/dev/null 2>&1 || exit 0
@@ -31,7 +33,17 @@ selective() {
 # runs_all <command tokens>: 0 when the command runs a whole test suite
 runs_all() {
   while [ $# -gt 0 ]; do   # drop env assignments and wrappers
-    case "$1" in [A-Za-z_]*=*|npx|pnpx|bunx|env|time|nohup|exec|command|-y|--yes) shift ;; *) break ;; esac
+    case "$1" in
+      [A-Za-z_]*=*|npx|pnpx|bunx|env|time|nohup|exec|command|sudo|-y|--yes) shift ;;
+      timeout|gtimeout)   # timeout [-k N] [-s SIG] [--opts] <duration> <command>
+        shift
+        while [ $# -gt 0 ]; do
+          case "$1" in -k|-s|--kill-after|--signal) [ $# -ge 2 ] || return 1; shift 2 ;; -*) shift ;; *) break ;; esac
+        done
+        [ $# -gt 0 ] && shift ;;   # the duration
+      nice) shift; case "${1:-}" in -n) shift 2 ;; -[0-9]*) shift ;; esac ;;
+      *) break ;;
+    esac
   done
   [ $# -gt 0 ] || return 1
   local c="${1##*/}"; shift

@@ -12,14 +12,14 @@
 | `superadvisor patrol [--clean [--apply]]` | `status`, plus a `patrol.log` entry and a stuck flag for lanes over the threshold. `--clean` lists lanes that are IDLE for `idle_close_min`, merged, with a clean worktree and no unpushed commits; `--apply` closes them and removes the worktree (git-ignored files in it go too). |
 | `superadvisor report` | Short daily report: lanes, stuck flags, commits, estimated cost. |
 | `superadvisor review` | Read-only nightly review, saved to `brains/.local/reviews/<date>.md`: open PRs (needs `gh`), lanes, today's stuck flags, today's commits on the integration branch, estimated cost. |
-| `superadvisor cron [--install\|--uninstall] [--project <p>] [--dry-run]` | No flag: prints samples. `--install`: `patrol --clean --apply` every 15 minutes, `review` at 22:00, `report` at 08:00 (launchd on macOS, a marked crontab block on Linux). Idempotent. Logs go to `brains/.local/`. |
+| `superadvisor cron [--install\|--uninstall] [--project <p>] [--dry-run]` | No flag: prints the crontab block and launchd plists that `--install` would write. `--install`: `patrol --clean --apply` every 15 minutes, `review` at 22:00, `report` at 08:00 (launchd on macOS, a marked crontab block on Linux). Idempotent. Logs: `brains/.local/` for crontab, `~/Library/Logs` for launchd (see below). |
 
 | Variable | Default | Meaning |
 |----------|---------|---------|
 | `SA_PROJECT` | current folder | Project folder |
 | `SA_SOCKET` | `sa` | tmux socket name, so the kit's sessions stay apart from yours |
 | `CLAUDE_BIN`, `TMUX_BIN`, `GH_BIN` | `claude`, `tmux`, `gh` | Binaries to use |
-| `SA_LAUNCHD_DIR`, `SA_LAUNCHCTL_BIN`, `SA_CRONTAB_BIN`, `SA_CRON_MODE` | `~/Library/LaunchAgents`, `launchctl`, `crontab`, by OS | Where `cron --install` writes (tests point these at fakes) |
+| `SA_LAUNCHD_DIR`, `SA_LAUNCHD_LOG_DIR`, `SA_LAUNCHCTL_BIN`, `SA_CRONTAB_BIN`, `SA_CRON_MODE` | `~/Library/LaunchAgents`, `~/Library/Logs`, `launchctl`, `crontab`, by OS | Where `cron --install` writes (tests point these at fakes) |
 
 ## Agents
 
@@ -38,10 +38,10 @@ agent pins its model in its frontmatter, and the `agent-routing` hook rejects ca
 
 | Hook | Blocks | Threshold | Tune with |
 |------|--------|-----------|-----------|
-| `turn-guard` | `builder`/`tester` runs that go on too long (Read and Grep still pass so they can report) | Warns at 60 and 90 tool calls, blocks from 130 | `TURN_GUARD_WARN`, `TURN_GUARD_WARN2`, `TURN_GUARD_DENY`, `TURN_GUARD_OFF=1` |
-| `test-budget` | Whole-suite test runs (`npm test`, `vitest`, `pytest`, `go test ./...` with no file or filter) | A file, folder, `-t`, `-k` or `--changed` passes | Add `FULL_SUITE_OK=1` to the command |
+| `turn-guard` | `builder`/`tester` runs that go on too long (Read and Grep still pass so they can report). An agent opened with a `name` is matched by its real type from the subagent meta file and only reminded, never blocked | Warns at 60 and 90 tool calls, blocks from 130 | `TURN_GUARD_WARN`, `TURN_GUARD_WARN2`, `TURN_GUARD_DENY`, `TURN_GUARD_OFF=1` |
+| `test-budget` | Whole-suite test runs (`npm test`, `vitest`, `pytest`, `go test ./...` with no file or filter), also behind `timeout`, `nice`, `sudo`, `env` or `npx` | A file, folder, `-t`, `-k` or `--changed` passes | Add `FULL_SUITE_OK=1` to the command |
 | `agent-routing` | Agent calls that pass `model`, or use `general-purpose` / no `subagent_type` | Every call | Edit `plugin/hooks/agent-routing.sh` |
-| `owner-guard` | In lanes only: `gh pr merge`, pushes to `main`/`master`/`dev`, writes to `.claude/settings*.json` | Every call in a lane | `KIT_LANE` (set by `superadvisor`) |
+| `owner-guard` | In lanes only: `gh pr merge`; `gh api` writes (a write method, or `-f`/`-F`/`--input` fields or `graphql` without `-X GET`; plain GET passes); pushes to `main`/`master`/`dev` or the integration branch; force, mirror, `--all`, delete (`--delete`, `-d`, `:branch`), `--prune`, wildcard, `--no-verify` and tag pushes (incl. a bare local tag name); `gh release create/edit/delete/upload`; printing credentials (`gh auth token`, `gh auth status -t`, `git credential`); writes to `.claude/settings*.json`, `.claude/hooks/`, `brains/lead.md`, `brains/config.json` and `.mcp.json` (paths compared case-insensitively; the kit's own `template/brains/` is exempt) | Every call in a lane | `KIT_LANE`, `KIT_PROTECTED_BRANCHES` (both set by `superadvisor lane open`; the second is the integration branch) |
 | `metrics-subagent` | Nothing; logs each subagent run | Each subagent stop | — |
 | `metrics-main` | Nothing; logs the main session per model | Each `Stop` | `KIT_METRICS_MAIN_MAX_FIRST_BYTES` (default 20 MB of transcript read on first run) |
 
@@ -79,4 +79,12 @@ Recent spend. Costs come from a price table; override it with `.claude/metrics/p
 | `brains/decisions.md` | Decisions already made, so the leader does not ask twice |
 | `brains/directives/` | Standing instructions from you |
 | `brains/inbox/` | New work dropped in for the leader |
-| `brains/.local/` | Runtime data: briefs, patrol log, nightly reviews, cron logs. Git-ignored. |
+| `brains/.local/` | Runtime data: briefs, patrol log, nightly reviews, crontab logs. Git-ignored. launchd logs go to `~/Library/Logs/superadvisor-<project>-<job>.log` instead (see below). |
+
+### launchd and protected folders (macOS)
+
+launchd opens a job's log files before the job starts, without Full Disk Access. A log path under `~/Documents`,
+`~/Desktop`, `~/Downloads` or an external volume makes the job exit 78 (`EX_CONFIG`) on every run, with no log to show
+it. So `cron --install` writes launchd logs to `~/Library/Logs` and sets no `WorkingDirectory`. If the project or the
+kit itself lives in one of those folders, the job may still need Full Disk Access for the `bash` it runs (the first one on the plist's `PATH`, which may be Homebrew's rather than `/bin/bash`) to read it; check
+with `launchctl print gui/$(id -u)/com.agiagentkit.superadvisor.<project>.patrol` (look at `last exit code`).

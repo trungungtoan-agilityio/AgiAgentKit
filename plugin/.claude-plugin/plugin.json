@@ -1,7 +1,7 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "agi-agent-kit",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Minimal multi-agent kit: agents split by model tier, hooks that save tokens, and telemetry of the main session and subagents.",
   "author": { "name": "U2T" },
   "license": "MIT",

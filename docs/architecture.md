@@ -71,7 +71,7 @@ Notes per step:
 
 - **`lane open`** checks the name (a-z, 0-9, hyphen), copies the brief into `brains/.local/briefs/`, creates the
   worktree and branch `lane/<name>` (reused if it already exists), then opens a tmux session with `KIT_LANE=1`,
-  `KIT_LANE_NAME`, `KIT_LANE_BRIEF`. With no `--model`, the lane runs on Claude Code's default model; the `lead` skill
+  `KIT_LANE_NAME`, `KIT_LANE_BRIEF`, `KIT_PROTECTED_BRANCHES` (the integration branch, for `owner-guard`). With no `--model`, the lane runs on Claude Code's default model; the `lead` skill
   tells the leader to use sonnet and pick opus only when a card needs judgement. `--dry-run` prints the commands
   without running them.
 - **Hooks** run inside the lane's own session. `owner-guard` only acts when `KIT_LANE=1` and always **denies** (there

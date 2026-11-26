@@ -63,6 +63,29 @@ chk "main session (no agent_id) is not counted" none "$(jq -cn '{hook_event_name
 chk "TURN_GUARD_OFF=1 disables the guard" none "$(TGENV="$TGENV TURN_GUARD_OFF=1"; turns t13 builder Bash 6)"
 out="$(echo '{bad json' | TMPDIR="$T" bash "$P/turn-guard.sh")"; rc=$?
 [ "$rc" -eq 0 ] && [ -z "$out" ] && pass=$((pass+1)) || { failn=$((failn+1)); echo "FAIL: broken JSON must exit 0 silently"; }
+# Named agent (agent teams): agent_type is the name; the real type is in the subagent meta file.
+mkdir -p "$T/tr/main/subagents"
+printf '{"agentType":"alice","spawnedAgentType":"agi-agent-kit:builder"}' > "$T/tr/main/subagents/agent-a1.meta.json"
+printf '{"agentType":"bob","spawnedAgentType":"","customAgentType":"tester"}' > "$T/tr/main/subagents/agent-a2.meta.json"
+printf '{"spawnedAgentType":"scout"}' > "$T/tr/main/subagents/agent-a3.meta.json"
+named() { # named <session> <agent_id> <transcript_path> <tool> <n>: like turns, for a named agent
+  local out="" i
+  for ((i = 0; i < $5; i++)); do
+    out="$(jq -cn --arg s "$1" --arg a "$2" --arg p "$3" --arg tool "$4" \
+      '{hook_event_name:"PreToolUse",session_id:$s,agent_id:$a,agent_type:"alice",tool_name:$tool,tool_input:{},permission_mode:"auto",transcript_path:$p}' \
+      | env $TGENV TMPDIR="$T" bash "$P/turn-guard.sh")"
+  done
+  printf '%s' "$out"
+}
+chk "named builder (meta) warns at WARN" warn "$(named n1 a1 "$T/tr/main.jsonl" Read 2)"
+chk "named builder (meta) is never denied" none "$(named n2 a1 "$T/tr/main.jsonl" Bash 6)"
+chk "named tester via customAgentType warns" warn "$(named n3 a2 "$T/tr/main.jsonl" Read 4)"
+chk "named agent from its own subagent transcript warns" warn "$(named n4 a1 "$T/tr/main/subagents/agent-a1.jsonl" Read 2)"
+chk "named scout (meta) is not counted" none "$(named n5 a3 "$T/tr/main.jsonl" Read 2)"
+chk "relative transcript_path is ignored" none "$(named n6 a1 "tr/main.jsonl" Read 2)"
+chk "no meta file: not counted" none "$(named n7 zz "$T/tr/main.jsonl" Read 2)"
+ln -s "$T/tr/main/subagents/agent-a1.meta.json" "$T/tr/main/subagents/agent-a9.meta.json"
+chk "symlinked meta file is ignored" none "$(named n8 a9 "$T/tr/main.jsonl" Read 2)"
 TGENV=""
 chk "default: call 59 is silent" none "$(turns d1 builder Read 59)"
 chk "default: call 60 warns" warn "$(turns d2 builder Read 60)"
@@ -80,22 +103,56 @@ for a in builder agi-agent-kit:reviewer scout Explore Plan; do chk "$a passes" n
 # --- test-budget ---
 tb() { chk "test-budget: $2" "$1" "$(bash_in "$2" | bash "$P/test-budget.sh")"; }
 for c in 'npm test' 'npm run test' 'npx vitest run' 'npx vitest' 'vitest' 'pytest' 'python -m pytest -q' 'go test ./...' \
-  'cd app && npm test 2>&1 | tail -20' 'CI=1 pnpm test'; do tb deny "$c"; done
+  'cd app && npm test 2>&1 | tail -20' 'CI=1 pnpm test' 'timeout 300 npm test' 'timeout -k 5 600 npx vitest run' 'nice -n 10 pytest' \
+  'sudo go test ./...'; do tb deny "$c"; done
 for c in 'npm test -- src/a.test.ts' 'npx vitest run src/a.test.ts' 'npx vitest run -t login' 'pytest tests/test_a.py' 'pytest -k login' \
-  'go test ./pkg/...' 'go test ./... -run TestA' 'FULL_SUITE_OK=1 npm test' 'npm run build' 'git commit -m "npm test; fix"' 'ls'; do tb none "$c"; done
+  'go test ./pkg/...' 'go test ./... -run TestA' 'FULL_SUITE_OK=1 npm test' 'npm run build' 'git commit -m "npm test; fix"' 'ls' 'timeout 60 npx vitest run src/a.test.ts' 'timeout 30 ls'; do tb none "$c"; done
+chk "test-budget: trailing timeout -k does not hang" none "$(bash_in 'timeout -k' | perl -e 'alarm 3; exec @ARGV' bash "$P/test-budget.sh")"
 chk "test-budget: asks outside auto mode" ask "$(bash_in 'npm test' default | bash "$P/test-budget.sh")"
 
 # --- owner-guard: a lane (KIT_LANE=1) stays off owner-only actions ---
 for c in 'gh pr merge 12 --squash' 'git push origin main' 'git push origin HEAD:dev' 'git -C sub push origin master' 'git push -f origin +main' \
-  'echo {} > .claude/settings.json' 'cd x && gh pr merge 3'; do
+  'echo {} > .claude/settings.json' 'cd x && gh pr merge 3' 'GH_TOKEN=x gh pr merge 4' 'git push --force origin lane/a' \
+  'git push --force-with-lease origin lane/a' 'git push origin +lane/a' 'git push -uf origin lane/a' 'git push --tags' \
+  'git push origin refs/tags/v1' 'git push origin tag v1' 'git push --mirror' 'git push origin --delete lane/b' \
+  'git push --no-verify origin lane/a' 'gh release create v1.0' 'gh api -X PUT repos/o/r/pulls/3/merge' 'gh auth token' \
+  'cp /tmp/x .claude/hooks/a.sh' 'echo x >> brains/lead.md' 'git -c core.hooksPath=/dev/null push origin main' \
+  'git push -fu origin lane/a' 'git push -ud origin lane/a' 'git push origin :lane/b' 'git push origin :' 'git push --prune origin' \
+  'git push --mirr' 'git push origin "main"' 'git push origin HEAD:heads/main' 'git push origin refs/heads/*:refs/heads/*' \
+  'command git push origin main' '(git push origin main)' '/usr/bin/git push origin main' 'git --no-pager push origin main' \
+  'sudo git push origin main' 'gh api repos/o/r/merges -f base=main -f head=x' 'gh api graphql -f query=x' \
+  'gh api -X DELETE repos/o/r/branches/main/protection' 'gh api --method=PATCH repos/o/r/git/refs/heads/main' \
+  'gh auth status --show-token' 'git credential fill' 'true <<< x; gh pr merge 1' 'echo x > .Claude/settings.json' \
+  'ln -sf /tmp/x .claude/settings.json' 'rm .claude/hooks/owner-guard.sh' 'echo {} > brains/config.json' 'echo {} > .mcp.json' \
+  'cp template/brains/lead.md brains/lead.md' 'cp /tmp/x ".claude/hooks/a.sh"' 'echo x | tee -a .claude/settings.local.json' \
+  'perl -pi -e s/a/b/ .claude/hooks/x.sh' 'sudo mv /tmp/x .mcp.json' $'read x <<< y\ngh pr merge 1'; do
   out="$(bash_in "$c" | KIT_LANE=1 bash "$P/owner-guard.sh")"; chk "owner-guard: $c" deny "$out"
 done
 has "message tells the lane to report to the leader" "$out" '.hookSpecificOutput.permissionDecisionReason | test("báo leader")'
-for c in 'git push origin feature/dev' 'git push -u origin lane/card-1' 'gh pr create --fill' 'git commit -m "gh pr merge later"' 'cat .claude/settings.json'; do
+for c in 'git push origin feature/dev' 'git push -u origin lane/card-1' 'git push --set-upstream origin lane/c' 'gh pr create --fill' 'git commit -m "gh pr merge later"' 'cat .claude/settings.json' \
+  'git commit -m "docs: steering rules in brains/lead.md"' 'git commit -m "chore: sync hooks -> .claude/hooks/a.sh"' \
+  'gh api repos/o/r/pulls/3/merge' 'gh api -X GET repos/o/r/pulls' 'gh auth status' 'git push origin lane/fix-dev' \
+  'cat brains/config.json' 'cp template/brains/lead.md /tmp/x' 'echo x >> template/brains/lead.md' \
+  'git commit -m "chore: rm stale copy in .claude/hooks/x.sh"' 'gh pr create --title x --body "deny rm on .claude/hooks/"' \
+  "gh api -X GET search/issues -f q='repo:o/r is:open'" "perl -Mstrict -ne 'print' .claude/hooks/x.sh" \
+  'cp .claude/hooks/a.sh /tmp/bak' 'rm -rf node_modules' 'git push -u origin HEAD' 'echo $((1 << 2))'; do
   chk "owner-guard: $c" none "$(bash_in "$c" | KIT_LANE=1 bash "$P/owner-guard.sh")"
 done
 chk "owner-guard: Edit settings.json" deny "$(edit_in Edit /proj/.claude/settings.json | KIT_LANE=1 bash "$P/owner-guard.sh")"
 chk "owner-guard: Write settings.local.json" deny "$(edit_in Write .claude/settings.local.json | KIT_LANE=1 bash "$P/owner-guard.sh")"
+chk "owner-guard: Write a project hook" deny "$(edit_in Write /proj/.claude/hooks/x.sh | KIT_LANE=1 bash "$P/owner-guard.sh")"
+chk "owner-guard: Edit brains/lead.md" deny "$(edit_in Edit /proj/brains/lead.md | KIT_LANE=1 bash "$P/owner-guard.sh")"
+chk "owner-guard: Edit with odd case and ./ is caught" deny "$(edit_in Edit /proj/.Claude/./Settings.json | KIT_LANE=1 bash "$P/owner-guard.sh")"
+chk "owner-guard: Edit brains/config.json" deny "$(edit_in Edit /proj/brains/config.json | KIT_LANE=1 bash "$P/owner-guard.sh")"
+chk "owner-guard: Edit the kit's template/brains/lead.md passes" none "$(edit_in Edit /kit/template/brains/lead.md | KIT_LANE=1 bash "$P/owner-guard.sh")"
+chk "owner-guard: Edit brains/decisions.md passes" none "$(edit_in Edit /proj/brains/decisions.md | KIT_LANE=1 bash "$P/owner-guard.sh")"
+chk "owner-guard: integration branch from KIT_PROTECTED_BRANCHES" deny "$(bash_in 'git push origin develop' | KIT_LANE=1 KIT_PROTECTED_BRANCHES=develop bash "$P/owner-guard.sh")"
+chk "owner-guard: other branch with KIT_PROTECTED_BRANCHES set" none "$(bash_in 'git push origin lane/x' | KIT_LANE=1 KIT_PROTECTED_BRANCHES=develop bash "$P/owner-guard.sh")"
+chk "owner-guard: gh release view passes" none "$(bash_in 'gh release view v1' | KIT_LANE=1 bash "$P/owner-guard.sh")"
+T_TAG="$T/tagrepo"; git init -q "$T_TAG"; git -C "$T_TAG" -c user.email=t@t -c user.name=t commit -q --allow-empty -m i; git -C "$T_TAG" tag v1.2.0
+chk "owner-guard: push of a bare local tag name" deny "$(jq -cn --arg d "$T_TAG" '{tool_name:"Bash",tool_input:{command:"git push origin v1.2.0"},cwd:$d}' | KIT_LANE=1 bash "$P/owner-guard.sh")"
+chk "owner-guard: heredoc body is data" none "$(bash_in $'cat > n.md <<EOF\ngh pr merge 1\ngit push origin main\nEOF' | KIT_LANE=1 bash "$P/owner-guard.sh")"
+chk "owner-guard: gh api read passes" none "$(bash_in 'gh api repos/o/r/pulls/3' | KIT_LANE=1 bash "$P/owner-guard.sh")"
 chk "owner-guard: Edit a source file" none "$(edit_in Edit src/a.ts | KIT_LANE=1 bash "$P/owner-guard.sh")"
 chk "owner-guard: not a lane, merge allowed" none "$(bash_in 'gh pr merge 12' | bash "$P/owner-guard.sh")"
 chk "owner-guard: not a lane, push main allowed" none "$(bash_in 'git push origin main' | bash "$P/owner-guard.sh")"
