@@ -107,6 +107,7 @@ for c in 'npm test' 'npm run test' 'npx vitest run' 'npx vitest' 'vitest' 'pytes
   'sudo go test ./...'; do tb deny "$c"; done
 for c in 'npm test -- src/a.test.ts' 'npx vitest run src/a.test.ts' 'npx vitest run -t login' 'pytest tests/test_a.py' 'pytest -k login' \
   'go test ./pkg/...' 'go test ./... -run TestA' 'FULL_SUITE_OK=1 npm test' 'npm run build' 'git commit -m "npm test; fix"' 'ls' 'timeout 60 npx vitest run src/a.test.ts' 'timeout 30 ls'; do tb none "$c"; done
+chk "test-budget: trailing timeout -k does not hang" none "$(bash_in 'timeout -k' | perl -e 'alarm 3; exec @ARGV' bash "$P/test-budget.sh")"
 chk "test-budget: asks outside auto mode" ask "$(bash_in 'npm test' default | bash "$P/test-budget.sh")"
 
 # --- owner-guard: a lane (KIT_LANE=1) stays off owner-only actions ---
@@ -115,21 +116,38 @@ for c in 'gh pr merge 12 --squash' 'git push origin main' 'git push origin HEAD:
   'git push --force-with-lease origin lane/a' 'git push origin +lane/a' 'git push -uf origin lane/a' 'git push --tags' \
   'git push origin refs/tags/v1' 'git push origin tag v1' 'git push --mirror' 'git push origin --delete lane/b' \
   'git push --no-verify origin lane/a' 'gh release create v1.0' 'gh api -X PUT repos/o/r/pulls/3/merge' 'gh auth token' \
-  'cp /tmp/x .claude/hooks/a.sh' 'echo x >> brains/lead.md' 'git -c core.hooksPath=/dev/null push origin main'; do
+  'cp /tmp/x .claude/hooks/a.sh' 'echo x >> brains/lead.md' 'git -c core.hooksPath=/dev/null push origin main' \
+  'git push -fu origin lane/a' 'git push -ud origin lane/a' 'git push origin :lane/b' 'git push origin :' 'git push --prune origin' \
+  'git push --mirr' 'git push origin "main"' 'git push origin HEAD:heads/main' 'git push origin refs/heads/*:refs/heads/*' \
+  'command git push origin main' '(git push origin main)' '/usr/bin/git push origin main' 'git --no-pager push origin main' \
+  'sudo git push origin main' 'gh api repos/o/r/merges -f base=main -f head=x' 'gh api graphql -f query=x' \
+  'gh api -X DELETE repos/o/r/branches/main/protection' 'gh api --method=PATCH repos/o/r/git/refs/heads/main' \
+  'gh auth status --show-token' 'git credential fill' 'true <<< x; gh pr merge 1' 'echo x > .Claude/settings.json' \
+  'ln -sf /tmp/x .claude/settings.json' 'rm .claude/hooks/owner-guard.sh' 'echo {} > brains/config.json' 'echo {} > .mcp.json' \
+  'cp template/brains/lead.md brains/lead.md'; do
   out="$(bash_in "$c" | KIT_LANE=1 bash "$P/owner-guard.sh")"; chk "owner-guard: $c" deny "$out"
 done
 has "message tells the lane to report to the leader" "$out" '.hookSpecificOutput.permissionDecisionReason | test("báo leader")'
-for c in 'git push origin feature/dev' 'git push -u origin lane/card-1' 'git push --set-upstream origin lane/c' 'gh pr create --fill' 'git commit -m "gh pr merge later"' 'cat .claude/settings.json'; do
+for c in 'git push origin feature/dev' 'git push -u origin lane/card-1' 'git push --set-upstream origin lane/c' 'gh pr create --fill' 'git commit -m "gh pr merge later"' 'cat .claude/settings.json' \
+  'git commit -m "docs: steering rules in brains/lead.md"' 'git commit -m "chore: sync hooks -> .claude/hooks/a.sh"' \
+  'gh api repos/o/r/pulls/3/merge' 'gh api -X GET repos/o/r/pulls' 'gh auth status' 'git push origin lane/fix-dev' \
+  'cat brains/config.json' 'cp template/brains/lead.md /tmp/x' 'echo x >> template/brains/lead.md'; do
   chk "owner-guard: $c" none "$(bash_in "$c" | KIT_LANE=1 bash "$P/owner-guard.sh")"
 done
 chk "owner-guard: Edit settings.json" deny "$(edit_in Edit /proj/.claude/settings.json | KIT_LANE=1 bash "$P/owner-guard.sh")"
 chk "owner-guard: Write settings.local.json" deny "$(edit_in Write .claude/settings.local.json | KIT_LANE=1 bash "$P/owner-guard.sh")"
 chk "owner-guard: Write a project hook" deny "$(edit_in Write /proj/.claude/hooks/x.sh | KIT_LANE=1 bash "$P/owner-guard.sh")"
 chk "owner-guard: Edit brains/lead.md" deny "$(edit_in Edit /proj/brains/lead.md | KIT_LANE=1 bash "$P/owner-guard.sh")"
+chk "owner-guard: Edit with odd case and ./ is caught" deny "$(edit_in Edit /proj/.Claude/./Settings.json | KIT_LANE=1 bash "$P/owner-guard.sh")"
+chk "owner-guard: Edit brains/config.json" deny "$(edit_in Edit /proj/brains/config.json | KIT_LANE=1 bash "$P/owner-guard.sh")"
+chk "owner-guard: Edit the kit's template/brains/lead.md passes" none "$(edit_in Edit /kit/template/brains/lead.md | KIT_LANE=1 bash "$P/owner-guard.sh")"
 chk "owner-guard: Edit brains/decisions.md passes" none "$(edit_in Edit /proj/brains/decisions.md | KIT_LANE=1 bash "$P/owner-guard.sh")"
 chk "owner-guard: integration branch from KIT_PROTECTED_BRANCHES" deny "$(bash_in 'git push origin develop' | KIT_LANE=1 KIT_PROTECTED_BRANCHES=develop bash "$P/owner-guard.sh")"
 chk "owner-guard: other branch with KIT_PROTECTED_BRANCHES set" none "$(bash_in 'git push origin lane/x' | KIT_LANE=1 KIT_PROTECTED_BRANCHES=develop bash "$P/owner-guard.sh")"
 chk "owner-guard: gh release view passes" none "$(bash_in 'gh release view v1' | KIT_LANE=1 bash "$P/owner-guard.sh")"
+T_TAG="$T/tagrepo"; git init -q "$T_TAG"; git -C "$T_TAG" -c user.email=t@t -c user.name=t commit -q --allow-empty -m i; git -C "$T_TAG" tag v1.2.0
+chk "owner-guard: push of a bare local tag name" deny "$(jq -cn --arg d "$T_TAG" '{tool_name:"Bash",tool_input:{command:"git push origin v1.2.0"},cwd:$d}' | KIT_LANE=1 bash "$P/owner-guard.sh")"
+chk "owner-guard: heredoc body is data" none "$(bash_in $'cat > n.md <<EOF\ngh pr merge 1\ngit push origin main\nEOF' | KIT_LANE=1 bash "$P/owner-guard.sh")"
 chk "owner-guard: gh api read passes" none "$(bash_in 'gh api repos/o/r/pulls/3' | KIT_LANE=1 bash "$P/owner-guard.sh")"
 chk "owner-guard: Edit a source file" none "$(edit_in Edit src/a.ts | KIT_LANE=1 bash "$P/owner-guard.sh")"
 chk "owner-guard: not a lane, merge allowed" none "$(bash_in 'gh pr merge 12' | bash "$P/owner-guard.sh")"

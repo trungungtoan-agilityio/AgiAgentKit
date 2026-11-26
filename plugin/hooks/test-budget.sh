@@ -38,7 +38,7 @@ runs_all() {
       timeout|gtimeout)   # timeout [-k N] [-s SIG] [--opts] <duration> <command>
         shift
         while [ $# -gt 0 ]; do
-          case "$1" in -k|-s|--kill-after|--signal) shift 2 ;; -*) shift ;; *) break ;; esac
+          case "$1" in -k|-s|--kill-after|--signal) [ $# -ge 2 ] || return 1; shift 2 ;; -*) shift ;; *) break ;; esac
         done
         [ $# -gt 0 ] && shift ;;   # the duration
       nice) shift; case "${1:-}" in -n) shift 2 ;; -[0-9]*) shift ;; esac ;;
