@@ -105,6 +105,7 @@ t "lane open protects the integration branch" has "$LOG" "ARG KIT_PROTECTED_BRAN
 t "lane open --remote-control PROJ-FIX-LOGIN" has "$LOG" "ARG PROJ-FIX-LOGIN"
 t "lane open có --model sonnet" has "$LOG" "ARG sonnet"
 t "lane open đưa brief vào prompt" has "$LOG" "Xong khi test xanh."
+t "lane open: -- trước prompt (--add-dir không nuốt prompt)" grep -A1 -qx "ARG --" "$LOG"
 "$SA" lane open fix-login --brief "$TMP/brief.md" > "$TMP/lane2.out" 2>&1
 t "lane open trùng tên bị từ chối" has "$TMP/lane2.out" "đang chạy"
 "$SA" lane open bad_name --brief "$TMP/brief.md" > "$TMP/lane3.out" 2>&1

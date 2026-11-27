@@ -112,7 +112,7 @@ build_cmd() {
   CMD+=("$CLAUDE_BIN" --remote-control "$sess" --permission-mode auto)
   if [ -n "$model" ]; then CMD+=(--model "$model"); fi
   if [ -n "$brief" ]; then CMD+=(--add-dir "$(dirname "$brief")"); fi
-  CMD+=("$prompt")
+  CMD+=(-- "$prompt")  # --add-dir takes several values: without -- it swallows the prompt
 }
 
 print_cmd() { printf '%q ' "${CMD[@]}"; printf '\n'; }
