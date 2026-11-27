@@ -1,25 +1,47 @@
 version: 1
 meta:
-  title: Superadvisor V2 — hỏi đáp
-  description: Câu hỏi hay gặp về các thay đổi 25–27/11 — cổng tải máy, lane tự báo, reuse và tự dọn, vai lane/lead, lead tự merge nhánh epic, spec bằng prototype.
+  title: Session Superadvisor — hỏi đáp
+  description: Câu hỏi hay gặp khi một đội áp dụng superadvisor — tmux, worktree, lane kẹt, owner-guard, chi phí, cổng tải máy, lane tự báo, reuse và tự dọn, vai lane/lead, lead tự merge nhánh epic, spec bằng prototype, cài đặt.
   locale: vi
 theme:
   preset: paper-ink
 blocks:
   - type: hero
-    eyebrow: Chuẩn bị thảo luận · V2
-    title: Hỏi đáp về vòng đời lane mới
-    description: "Câu hỏi về bản V1 (tmux, worktree, owner-guard, cài đặt) vẫn ở trang hỏi đáp V1. Trang này chỉ nói phần mới."
+    eyebrow: Chuẩn bị thảo luận · Session Superadvisor
+    title: Hỏi đáp khi một đội áp dụng superadvisor
+    description: Câu trả lời lấy từ FAQ, hướng dẫn cài đặt và tài liệu vòng đời lane; chi tiết lệnh nằm ở bảng tra lệnh.
 
   - type: section
-    title: Câu hỏi hay gặp
+    title: Nền tảng
     blocks:
       - type: accordion
         items:
-          - title: Các tính năng này có trong AgiAgentKit không?
-            text: "Chưa. Cổng tải máy, watcher, reuse/pool, vai lane/lead, merge epic và template prototype nằm trong AgentAutoKit (plugin agent-brains 0.11–0.14, kit 2.35–2.37). AgiAgentKit tuần này nhận bản đồng bộ hook (#9) và cron/review (#2)."
+          - title: Vì sao dùng tmux?
+            text: "Leader và mỗi lane là phiên Claude Code chạy lâu, phải tiếp tục sau khi bạn đóng terminal. tmux cho mỗi phiên một session tách rời để attach rồi rời. Nó cũng cho `superadvisor` đọc màn hình (`capture-pane`) để biết BUSY / IDLE / WAITING, và giữ pane sau khi Claude Code thoát (`remain-on-exit`) để `status` báo DEAD. Mọi thứ chạy trên socket riêng (`tmux -L sa`, đổi bằng `SA_SOCKET`)."
+          - title: Vì sao mỗi lane một git worktree?
+            text: "Các lane chạy cùng lúc. Chung một checkout thì chúng sửa cùng file và đổi nhánh dưới chân nhau. Mỗi lane có `.claude/worktrees/<name>` trên nhánh riêng `lane/<name>` cắt từ nhánh tích hợp: một thẻ là một thư mục, một nhánh, một PR. Metrics ghi vào checkout chính nên xoá worktree không mất gì."
+          - title: Một tài khoản Claude có chạy được nhiều lane không?
+            text: "Được. Các lane dùng chung tài khoản; giới hạn là lượt dùng và RAM của máy. Với AgentAutoKit (plugin agent-brains), cổng tải máy `kit-load` chặn mở thêm lane khi máy đã đầy."
+          - title: Remote Control khớp vào đâu?
+            text: "Mọi phiên CLI mở đều chạy `claude --remote-control <session name>`. Trong app Claude chọn `<PROJECT>-LEAD` để nói chuyện với leader từ điện thoại. Cần Claude Code đăng nhập claude.ai; không có thì `tmux -L sa attach -t <session>`."
+          - title: Có chạy trên Linux không?
+            text: "Có. CLI và hook là bash (3.2 trở lên) với `tmux`, `git`, `jq`. `superadvisor cron` in mẫu crontab và mẫu launchd (chỉ macOS). Trên Windows dùng WSL."
+          - title: Dùng với repo có sẵn thế nào?
+            text: "Chạy `superadvisor init /path/to/repo`. Không ghi đè: file cũ giữ nguyên, `CLAUDE.md` được nối thêm một khối có đánh dấu. Điền các chỗ `<...>` (lệnh test, typecheck, đường dẫn nhạy cảm), đặt `integration_branch` trong `brains/config.json` (ví dụ `dev`), commit vào nhánh đó, cài plugin, rồi `superadvisor up /path/to/repo`."
+          - title: Chạy lane không cần plugin được không?
+            text: "CLI không phụ thuộc plugin, chỉ cần bash, tmux, git, jq. Nhưng không có plugin thì không có hook (không `owner-guard`, không ngân sách, không metrics), không agent ghim model, không skill `lead`. Nên dùng plugin."
+          - title: Dừng mọi thứ thế nào?
+            text: "Một lane: `superadvisor lane close <name>` (giữ worktree). Leader: `tmux -L sa kill-session -t <PROJECT>-LEAD`. Mọi phiên trên socket của kit: `tmux -L sa kill-server`. Nếu đã cài cron hoặc launchd thì gỡ bằng `superadvisor cron --uninstall`."
+
+  - type: section
+    title: Vòng đời lane
+    blocks:
+      - type: accordion
+        items:
           - title: Máy đầy RAM thì sao?
             text: "`kit-load` trả STOP và lane-launch, lane-resume, `--bare` từ chối mở lane (log `load-refused`). Owner có thể mở bằng `--force-load`, luôn ghi log `load-force`. Mở leader chỉ cảnh báo, không chặn. Swap cao chỉ STOP khi RAM trống dưới 30% hoặc macOS báo memory pressure."
+          - title: Lane bị kẹt thì sao?
+            text: "Hook của lane ghi sự kiện (DONE, IDLE, WAITING, EXIT, LIMIT) và watcher báo leader trong khoảng một phút. `superadvisor patrol` mỗi 15 phút là lưới an toàn: gắn cờ pane chết, hộp hỏi quyền chờ ít nhất 5 phút, hoặc màn hình không đổi ít nhất 20 phút. Skill `lead` bảo leader chuyển hộp hỏi quyền chỉ owner được duyệt cho bạn, hoặc đóng lane, viết brief hẹp hơn và mở lại cùng tên. Kẹt lần hai thì dừng và hỏi bạn."
           - title: Watcher có tự xử lý lane kẹt không?
             text: "Không. Watcher chỉ báo vào inbox của leader và, khi leader rỗi, gõ một dòng `[kit-lane-event]` (tối đa 1 lần mỗi 5 phút). Leader quyết định. Nếu kẹt, DEAD hoặc WAITING từ 15 phút và 15 phút sau khi báo vẫn chưa ai xử lý thì leo thang: tin cảnh báo, dòng trong `~/.kit-remote/owner-alerts.log`, patrol hiện `VIỆC: lane-kẹt`."
           - title: Lane có thể giả tin nhắn của owner qua watcher không?
@@ -28,36 +50,82 @@ blocks:
             text: "Có, cố ý. `kit-tmux lanes reuse` gõ `/clear`, chỉ nhấn Enter khi ô nhập chứa đúng `/clear`, đợi lane rỗi rồi mới gõ brief mới. Tiết kiệm thời gian mở phiên và nạp plugin, nhưng context mới hoàn toàn."
           - title: Worktree bị xoá nhầm thì sao?
             text: "`kit-wt-clean` chỉ xoá khi worktree sạch, đã push, không locked, không tiến trình nào có cwd trong đó, và không dùng `--force`. PR CLOSED thì giữ. Lỗi gì trong lúc kiểm cũng nghiêng về giữ. Sweep chỉ chạy khi đĩa trống dưới 40 GB và chỉ leader gọi được."
+          - title: Dự án tự mở lane bằng script riêng thì watcher có thấy không?
+            text: "Có, nếu leader đăng ký lane đó: `kit-tmux lanes adopt <tên> --sock <socket>` ghi lane vào sổ và bật watcher. Tên phải theo mẫu `<PROJ>-C<n>-<thẻ>` và phiên tmux phải tồn tại; gọi từ lane sẽ bị từ chối."
+          - title: Các phần vòng đời lane nằm ở đâu?
+            text: "Cổng tải máy, watcher, reuse/pool, vai lane/lead, merge epic và template prototype nằm trong AgentAutoKit (plugin agent-brains). AgiAgentKit có CLI superadvisor, 5 agent, 6 hook, cron, app demo và benchmark."
+
+  - type: section
+    title: Vai, hook và merge
+    blocks:
+      - type: accordion
+        items:
           - title: Lane có tự merge được không?
-            text: "Không. Lane bị deny cứng merge, push nhánh chính, force, tag, deploy, sửa settings, hooks và manifest. Chỉ leader merge, và chỉ vào nhánh `epic/<slug>-<issue>` khi đủ gate trên cùng head."
+            text: "Không. Lane bị deny cứng merge, push nhánh chính, force, tag, deploy, sửa settings, hooks và manifest. Chỉ leader merge: PR bạn gọi tên (ví dụ `M 12`) trên đúng head đã duyệt, hoặc vào nhánh `epic/<slug>-<issue>` khi đủ gate trên cùng head."
+          - title: Leader được merge những gì?
+            text: "PR bạn gọi tên, chỉ trên head đã duyệt; head đổi thì hỏi lại. Tối thiểu: test xanh trên đúng head đó, không còn lỗi High/Critical sau tối đa hai vòng review. Trong epic, leader tự merge vào nhánh epic khi gate qua. Không bao giờ release, deploy, tag, force push, đổi quyền hay xoá dữ liệu không khôi phục được."
           - title: Tắt lead tự merge epic thế nào?
             text: "Thêm dòng `Epic lead-merge: off` vào `CLAUDE.md` trên nhánh tích hợp. Leader đọc từ origin sau fetch; đọc lỗi cũng coi là tắt. Đổi dòng này phải là PR riêng do owner merge."
-          - title: KIT_ROLE khác KIT_LANE ở V1 thế nào?
-            text: "`KIT_LANE=1` của AgiAgentKit chỉ bật owner-guard trong lane. `KIT_ROLE=lane|lead` của AgentAutoKit còn quyết định context nào được nạp (manifest `.claude/context-roles.json`) và thêm deny chống thoát vai. Không có biến thì coi là lead."
+          - title: KIT_ROLE và KIT_LANE khác nhau thế nào?
+            text: "`KIT_LANE=1` (superadvisor đặt khi mở lane) bật `owner-guard`. `KIT_ROLE=lane|lead` còn quyết định context nào được nạp (manifest `.claude/context-roles.json`) và thêm deny chống thoát vai. Không có biến thì coi là lead."
+          - title: "`owner-guard` có phải ranh giới bảo mật không?"
+            text: "Không. Nó là rào chắn chống lane làm việc của owner theo thói quen, không chống agent có ý xấu. Nó chỉ chạy trong lane và chỉ xem các lệnh trực tiếp. Không có `jq` thì mọi hook cho qua. Muốn ranh giới thật: bảo vệ nhánh tích hợp, bắt buộc review, token quyền nhỏ nhất."
+          - title: Chỉnh ngưỡng hook ở đâu?
+            text: "`turn-guard` (60, 90, 130 lần gọi tool): `TURN_GUARD_WARN`, `TURN_GUARD_WARN2`, `TURN_GUARD_DENY`, `TURN_GUARD_OFF=1`. `test-budget`: chỉ định file, thư mục hoặc filter, hoặc `FULL_SUITE_OK=1`. Patrol: `patrol.waiting_min`, `patrol.stuck_min` trong `brains/config.json`. Danh sách agent: sửa `plugin/hooks/agent-routing.sh`."
+          - title: Ước tính chi phí sát hoá đơn thật tới đâu?
+            text: "Chỉ là ước tính. `kit-stats.sh` nhân số token hook ghi được với bảng giá theo tầng. Nó không biết gói, chiết khấu hay giá hiện hành, và bỏ sót phiên chạy không có plugin. Đặt giá riêng trong `.claude/metrics/pricing.json`. Muốn số đo thật, so với `total_cost_usd` của Claude Code (benchmark ghi cả hai) hoặc trang billing."
           - title: Prototype có dùng dữ liệu thật không?
             text: "Không bao giờ. Template `ui-prototype` chỉ dùng dữ liệu bịa. Prototype là một file HTML, link trong issue GitHub làm behavior spec, bỏ đi sau khi code thật xong."
-          - title: Dự án tự mở lane bằng script riêng thì watcher có thấy không?
-            text: "Trước đây không. Giờ leader chạy `kit-tmux lanes adopt <tên> --sock <socket>` để ghi lane vào sổ. Tên phải theo mẫu `<PROJ>-C<n>-<thẻ>` và phiên tmux phải tồn tại."
+
+  - type: section
+    title: Checklist cài đặt (khoảng 10 phút)
+    blocks:
+      - type: checklist
+        items:
+          - text: "Có Claude Code (`claude --version`), git, tmux, jq; Node.js 20+ chỉ cần cho app demo. Windows dùng WSL."
+          - text: "Clone repo AgiAgentKit (về `~/AgiAgentKit`); tuỳ chọn thêm `~/AgiAgentKit/bin` vào PATH — `superadvisor --help` in danh sách lệnh."
+          - text: "Thêm marketplace: claude plugin marketplace add ~/AgiAgentKit"
+          - text: "Cài plugin: claude plugin install agi-agent-kit@agi-agent-kit — kiểm bằng claude plugin details, phải thấy 5 agent, các hook và skill lead."
+          - text: "Project phải là git repo; chạy superadvisor init /path/to/your-project."
+          - text: "Điền chỗ <...> trong CLAUDE.md, kiểm brains/config.json (integration_branch, ngưỡng patrol), commit vào nhánh tích hợp."
+          - text: "Khởi động leader: superadvisor up /path/to/your-project — kiểm bằng superadvisor status, thấy một dòng cho leader."
+          - text: "Cài lịch: superadvisor cron --install --project /path/to/your-project (patrol 15 phút, review 22:00, report 08:00)."
+          - text: "Giao việc bằng lời; duyệt merge bằng M <số PR>. Đọc scorecard: ~/AgiAgentKit/plugin/scripts/kit-stats.sh trong project."
+
+  - type: section
+    title: "Cây quyết định: lane bị kẹt thì làm gì"
+    blocks:
+      - type: image
+        src: ../img/stuck-lane.svg
+        alt: "Cây quyết định: patrol gắn cờ KẸT (chỉ báo). WAITING từ 5 phút: nếu là quyền của owner thì báo owner, nếu không thì đóng lane và mở lại. DEAD hoặc màn hình không đổi từ 20 phút: đóng lane, viết brief hẹp hơn, mở lại cùng tên. Vẫn kẹt lần hai: dừng và hỏi owner."
+        caption: "Leader làm theo skill `lead`. Kẹt lần hai thì dừng và hỏi owner."
 
   - type: section
     title: Giới hạn đã biết
     blocks:
       - type: list
         items:
-          - text: "Deny theo vai là lưới thứ hai; khoá thật vẫn là hook cộng bảo vệ nhánh trên GitHub."
-            badge: vai
+          - text: "Hook không phải ranh giới bảo mật: không có `jq` thì mọi hook cho qua; deny theo vai là lưới thứ hai, khoá thật vẫn là hook cộng bảo vệ nhánh trên GitHub."
+            badge: hook
           - text: "Watcher chạy mỗi khoảng 60 giây, nên một sự kiện có thể tới leader trễ tới một phút."
             badge: watcher
           - text: "Pool mặc định 3 lane; pool đầy thì lệnh mở lane thoát mã 4, cần đóng bớt hoặc dùng `--new`."
             badge: pool
           - text: "Merge epic chỉ áp cho nhánh `epic/*`; nhánh tích hợp và mọi thứ deploy vẫn cần owner."
             badge: merge
+          - text: "Chi phí là ước tính từ bảng giá; bỏ sót phiên không có plugin."
+            badge: chi phí
+          - text: "Benchmark N = 1 mỗi thẻ trên app demo nhỏ; độ dao động chưa biết, không đo được số lần người phải can thiệp."
+            badge: bench
+          - text: "Remote Control cần Claude Code đăng nhập claude.ai."
+            badge: remote
 
   - type: section
     title: Xem thêm
     blocks:
       - type: references
         items:
-          - { id: handout, title: Tài liệu đi kèm V2 (tiếng Anh), href: handout.html }
-          - { id: cheatsheet, title: Bảng tra lệnh V2, href: cheatsheet.html }
-          - { id: v1qa, title: "Hỏi đáp V1 (cài đặt, tmux, worktree)", href: ../qa.html }
+          - { id: handout, title: Tài liệu đi kèm buổi nói chuyện (tiếng Anh), href: handout.html }
+          - { id: cheatsheet, title: Bảng tra lệnh, href: cheatsheet.html }
+          - { id: faq, title: FAQ đầy đủ (tiếng Anh), href: ../../faq.md }
+          - { id: install, title: Hướng dẫn cài đặt (tiếng Anh), href: ../../INSTALL.md }
