@@ -1,7 +1,7 @@
-# Deck source — Session Superadvisor V2
+# Deck source — Session Superadvisor
 
-Source for `docs/talk/v2/Session-Superadvisor-V2-AgilityIO.pptx` and `.pdf`. Copied from `docs/talk/src/` (V1) and
-rewritten; V1 stays untouched. Two builders render the **same deck** from the same coordinates:
+Source for `docs/talk/v2/Session-Superadvisor-V2-AgilityIO.pptx` and `.pdf`. Two builders render the **same deck**
+from the same coordinates:
 
 - `build.js` → `../Session-Superadvisor-V2-AgilityIO.pptx` (via `pptxgenjs`, then an Office theme is written in).
 - `build-pdf.js` → `../Session-Superadvisor-V2-AgilityIO.pdf` (React → one HTML page → headless Chrome print).
@@ -21,5 +21,5 @@ default accent colors. After building, render the PDF and read every page for ov
 
 ## Assets
 
-Shared with V1 through a relative path (`../../src/assets/`): logo SVG/PNG, `agikit-demo.mp4` (embedded in slide 13
-of the pptx) and `demo-poster.png` (video cover in the pptx, still image on slide 13 of the PDF).
+Read from `docs/talk/src/assets/` through a relative path (`../../src/assets/`): logo SVG/PNG, `agikit-demo.mp4`
+(embedded in slide 18 of the pptx) and `demo-poster.png` (video cover in the pptx, still image on slide 18 of the PDF).
