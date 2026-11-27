@@ -1,0 +1,95 @@
+version: 1
+meta:
+  title: Superadvisor V2 — bảng tra lệnh
+  description: Lệnh mới của vòng đời lane (AgentAutoKit) và các thay đổi tuần này của superadvisor và hook trong AgiAgentKit.
+  locale: vi
+theme:
+  preset: swiss-clean
+blocks:
+  - type: hero
+    eyebrow: Cheat sheet · V2
+    title: Lệnh mới cho vòng đời lane
+    description: "Phần 1–3 là AgentAutoKit (plugin agent-brains). Phần 4 là AgiAgentKit. Lệnh V1 vẫn ở bảng tra V1."
+
+  - type: section
+    title: 1. Cổng tải máy
+    blocks:
+      - type: code
+        language: bash
+        title: kit-load
+        text: |
+          kit-load            # exit 0 OK · 1 WARN · 2 STOP
+          kit-load --json     # cho script
+          lane-launch ... --force-load   # mở dù STOP, ghi log load-force
+      - type: table
+        columns: [Đo, Ghi chú]
+        rows:
+          - [RAM trống %, Mỗi lane là một phiên Claude Code cộng công cụ]
+          - [Swap, "Chỉ STOP khi RAM trống < 30% hoặc memory pressure ≥ 2"]
+          - [Load / nhân, Build và test nhiều lane cùng lúc]
+          - [Đĩa trống, "Dưới 40 GB thì leader được nhắc sweep worktree"]
+          - [Simulator đang Booted, Chỉ một iOS simulator cùng lúc]
+          - [Colima rảnh, VM Docker không container vẫn giữ RAM]
+
+  - type: section
+    title: 2. Lane tự báo, watcher
+    blocks:
+      - type: code
+        language: bash
+        title: Watcher
+        text: |
+          kit-tmux lanes watcher status
+          kit-tmux lanes watcher start
+          kit-tmux lanes watcher stop
+      - type: table
+        columns: [Sự kiện, Từ đâu, Leader thấy]
+        rows:
+          - [DONE, Hook Stop có dòng READY, "Tin READY kèm PR và sha"]
+          - [IDLE, Hook idle_prompt, "Rỗi > 10 phút"]
+          - [WAITING, Hộp hỏi quyền, "Leo thang nếu ≥ 15′ và 15′ sau vẫn chưa xử lý"]
+          - [EXIT, Hook SessionEnd, "DEAD / mồ côi"]
+          - [LIMIT, Hết lượt hoặc lỗi auth, Báo ngay]
+
+  - type: section
+    title: 3. Reuse, pool, dọn dẹp, adopt
+    blocks:
+      - type: code
+        language: bash
+        title: Lane
+        text: |
+          kit-tmux lanes reuse <lane> <brief>     # cùng repo + account, /clear rồi gõ brief
+          kit-tmux lanes adopt <tên> --sock <s>   # chỉ lead; tên <PROJ>-C<n>-<thẻ>
+          lane-launch ... --new                   # bỏ qua pool (lane_pool mặc định 3, đầy thì exit 4)
+      - type: code
+        language: bash
+        title: Dọn worktree
+        text: |
+          kit-wt-clean --self --light            # lane, trước READY: xoá thư mục build nặng
+          kit-wt-clean --self --apply            # lane tự xoá worktree của mình khi an toàn
+          kit-wt-clean --sweep --apply           # chỉ lead, chỉ khi đĩa trống < 40 GB
+          lane-status --clean --apply
+      - type: checklist
+        items:
+          - text: Không tiến trình nào có cwd trong worktree
+          - text: Worktree sạch và đã push
+          - text: Không locked, không dùng --force
+          - text: PR CLOSED thì giữ; lỗi khi kiểm thì giữ
+
+  - type: section
+    title: 4. AgiAgentKit tuần này
+    blocks:
+      - type: code
+        language: bash
+        title: superadvisor
+        text: |
+          superadvisor cron --install     # patrol --clean --apply 15′ · review 22:00 · report 08:00
+          superadvisor cron --uninstall
+          superadvisor patrol --clean --apply
+          superadvisor lane close <name> --rm-worktree
+      - type: table
+        columns: [Hook, Thay đổi (#9)]
+        rows:
+          - [owner-guard, "Trong lane chặn thêm: push force/mirror/delete/--no-verify/tag, release, merge qua API, in token, sửa hook dự án và brains/lead.md. gh api chỉ đọc. KIT_PROTECTED_BRANCHES. Văn xuôi trong ngoặc được bỏ qua."]
+          - [turn-guard, Khớp type thật của agent; chỉ nhắc]
+          - [test-budget, "Bắt cả bộ test chạy sau timeout, nice, sudo"]
+          - [cron (launchd), "Log chuyển ra ~/Library/Logs"]

@@ -1,0 +1,161 @@
+version: 1
+meta:
+  title: Superadvisor V2 — talk handout
+  description: Companion to the Superadvisor V2 talk — what changed since V1 (25–27 Nov) — the lane lifecycle (load gate, self-reporting, reuse, cleanup, adopt), lane and leader roles, gated epic merges, spec by prototype and this week's AgiAgentKit updates.
+  locale: en
+theme:
+  preset: paper-ink
+blocks:
+  - type: hero
+    eyebrow: Talk handout · Session Superadvisor V2
+    title: Lanes that open safely, report back by themselves and clean up after the card
+    description: "V1 introduced one leader session running many lanes. V2 is what changed between 25 and 27 November: how each lane is opened, watched, reused and removed."
+
+  - type: section
+    title: Recap from V1
+    blocks:
+      - type: text
+        text: "You talk to one leader session. The leader splits the backlog, writes briefs and opens one lane (a Claude Code session in its own git worktree) per medium card or hard bug. Hooks see every tool call and log token metrics; Brains patrol in the background. The V1 handout covers this in full."
+      - type: image
+        src: ../img/architecture.svg
+        alt: "Architecture: the owner talks to the leader over Remote Control; brains alert the leader when a lane is stuck; the leader opens lanes; hooks see every tool call and log token metrics."
+        caption: "The V1 picture, unchanged. V2 changes what happens around each lane box."
+
+  - type: section
+    title: "V1 → V2: what changed"
+    blocks:
+      - type: callout
+        tone: info
+        title: Where the code lives
+        text: "The lane features (load gate, watcher, reuse, roles, epic merge, prototype template) ship in AgentAutoKit (agent-brains 0.11–0.14, kit 2.35–2.37). AgiAgentKit, the kit you can download for this talk, got the hook and cron fixes listed at the end."
+      - type: table
+        columns: [Topic, V1, V2]
+        rows:
+          - [Opening a lane, Opens whenever the leader asks, "Load gate first: `kit-load` says OK, WARN or STOP"]
+          - [Done or stuck?, 15-minute patrol reads the screen, "Lane hooks push events; a 60 s watcher tells the leader, then escalates"]
+          - [After the card, "Close the lane, remove the merged worktree", "Reuse the idle lane (pool of 3); worktrees removed only when safe"]
+          - [What a lane loads, Same context as the leader, "Lane role: safe context only, hard denies against role escape"]
+          - [Merging, Owner approves every merge, "Leader merges into `epic/*` when the gate passes and review shows High 0"]
+          - [The spec, A written brief, Brief plus a clickable prototype with mock data]
+
+  - type: section
+    title: A lane's life in five steps
+    blocks:
+      - type: steps
+        items:
+          - title: 1. Gate
+            text: "`kit-load` measures free RAM, swap, load per core, free disk, booted simulators and idle Colima. Exit 0/1/2 = OK/WARN/STOP, `--json` for scripts. STOP refuses `lane-launch`, `lane-resume` and `--bare` (logged `load-refused`); `--force-load` opens anyway and logs `load-force`. Opening the leader only warns."
+          - title: 2. Run in role
+            text: "The lane starts with `KIT_ROLE=lane`: it loads the safe core and the app's rules, never files marked `lead_only`, and hits hard denies for merge, push to main, force, tag, deploy and settings or hooks edits."
+          - title: 3. Report back
+            text: "Stop, SessionEnd and idle hooks call `bin/lane-event`, which appends one line to `lane-events.jsonl` (DONE, IDLE, WAITING, EXIT or LIMIT, with the PR and sha from the READY line). A watcher per leader turns them into inbox messages."
+          - title: 4. Reuse
+            text: "`kit-tmux lanes reuse <lane> <brief>` hands the next brief to an idle lane of the same repo and account. New lanes first look for an idle one in the pool (`lane_pool`, default 3); `--new` skips the pool."
+          - title: 5. Clean up
+            text: "Before READY the lane runs `kit-wt-clean --self --light` to drop heavy build folders. The leader sweeps worktrees only when free disk is under 40 GB, and only clean, pushed, unlocked worktrees that no process uses; closed PRs stay."
+      - type: callout
+        tone: info
+        title: "Lanes from your own scripts: `kit-tmux lanes adopt`"
+        text: "Projects that open lanes with their own launcher were invisible to the watcher. `kit-tmux lanes adopt <name> --sock <socket>` writes the running lane into the leader's book. Leader only; the name must match `<PROJ>-C<n>-<tag>` and the tmux session must exist."
+
+  - type: section
+    title: Lanes report to the leader by themselves
+    blocks:
+      - type: diagram-panel
+        title: From lane hook to leader
+        caption: "Messages are marked unverified and never treated as the owner's words. An idle leader gets at most one typed `[kit-lane-event]` line every 5 minutes."
+        spec:
+          meta:
+            title: Lane events
+          nodes:
+            - { id: hooks, label: "Lane hooks (Stop, SessionEnd, idle)" }
+            - { id: log, label: lane-events.jsonl }
+            - { id: watcher, label: "Watcher (≈60 s, flock)" }
+            - { id: inbox, label: "Leader inbox + lead-nudge" }
+            - { id: alert, label: "Alert + owner-alerts.log" }
+          connections:
+            - { from: hooks, to: log, label: "DONE IDLE WAITING EXIT LIMIT" }
+            - { from: log, to: watcher, label: read every pass }
+            - { from: watcher, to: inbox, label: "READY, IDLE > 10′, stuck, DEAD" }
+            - { from: inbox, to: alert, label: "still unhandled 15′ later" }
+      - type: table
+        title: What the watcher flags
+        columns: [Event, Meaning]
+        rows:
+          - [READY, A new READY PR line in the lane]
+          - [IDLE, Idle for more than 10 minutes]
+          - [stuck / WAITING, Screen unchanged or a prompt waiting]
+          - [DEAD / orphan, "Claude Code exited, or a lane no leader owns (patrol prints the close command, never runs it)"]
+          - [LIMIT / auth, Usage limit or login problem]
+      - type: text
+        text: "Escalation: stuck, DEAD or WAITING for 15 minutes and still unhandled 15 minutes after the message → an alert message, a line in `~/.kit-remote/owner-alerts.log`, and lead-patrol shows `VIỆC: lane-kẹt` until it is resolved. Control the watcher with `kit-tmux lanes watcher status|start|stop`."
+
+  - type: section
+    title: Lane and leader load different context
+    blocks:
+      - type: table
+        columns: ["", "Lane (KIT_ROLE=lane)", Leader]
+        rows:
+          - [Loads, "Safe core + the app's rules; `lead_only` files left out", Everything (also the default when no role is set)]
+          - [Safety floor, "Files named safety, secret, security, tenant or permission always load", Same]
+          - [Hard denies, "Merge, push to main, force, tag, deploy, edit settings, hooks or the manifest", —]
+          - [Anti-escape, "No git remote/config edits, no tmux or new lanes, no gh api writes, no credential reads", —]
+          - [Lead-only commands, "Refused: the guard walks the process tree and fails closed", Allowed]
+      - type: text
+        text: "The manifest is `.claude/context-roles.json` (`lead_only`, `safety`, `lane_deny`); `kit-context settings|check` prints and validates it, and a broken manifest stops the lane from opening. Denies are a second net; the real lock is hooks plus branch protection."
+
+  - type: section
+    title: The leader merges into epic branches, behind a gate
+    blocks:
+      - type: checklist
+        items:
+          - text: "Base is `epic/<slug>-<issue>` — never the integration branch, a release branch or anything that deploys."
+          - text: Not a draft, not from a fork, opened by the project's author.
+          - text: "Checks green, a `Gate:` line and `Review: HEAD <sha40> · High 0 · Critical 0` for the same head being merged."
+          - text: "No sensitive paths: dot-folders, `CLAUDE.md`, scripts, hooks, settings, deploy files and lockfiles go to the owner."
+          - text: "No deploy trigger: workflow `on:` keys checked on every branch involved."
+      - type: callout
+        tone: warning
+        title: On by default, fails closed
+        text: "The line `Epic lead-merge: off` in `CLAUDE.md` on the integration branch (read from origin after a fetch) turns it off; a read error counts as off. Changing that line must be its own PR merged by the owner."
+
+  - type: section
+    title: Spec by prototype, before any code
+    blocks:
+      - type: card-grid
+        items:
+          - title: Guide
+            text: Demo script plus a UAT checklist that ticks itself as you click through.
+          - title: App
+            text: Phone frame with tabs and bottom sheets.
+          - title: Web
+            text: Responsive layout sharing the same cart.
+          - title: Staff / POS
+            text: Order queue and scan.
+          - title: Admin
+            text: KPI, orders, catalog and audit.
+      - type: text
+        text: "The `ui-prototype` template (AgentAutoKit 2.37.0) is one HTML file. Sample flow: order in App or Web → Staff queue → complete → Admin KPI and audit update. Keep only the screens the feature needs, fill the 12 TODO domain markers, use made-up data only, and link the prototype in the GitHub issue as the behavior spec."
+
+  - type: section
+    title: In AgiAgentKit this week
+    blocks:
+      - type: card-grid
+        items:
+          - title: "Hooks synced (#9)"
+            text: "In lanes `owner-guard` also stops force, mirror, delete and tag pushes, `--no-verify`, releases, API merges, token printing and edits to project hooks or `brains/lead.md`. `gh api` in a lane is read-only; `KIT_PROTECTED_BRANCHES` protects the integration branch; quoted prose no longer trips it. 164 hook tests pass."
+          - title: "Cron and review (#2)"
+            text: "`superadvisor cron --install`: `patrol --clean --apply` every 15 minutes, read-only review at 22:00, report at 08:00. launchd logs now go to `~/Library/Logs`."
+          - title: "turn-guard and test-budget (#9)"
+            text: "turn-guard matches a named agent by its real type and only reminds; test-budget catches whole-suite runs behind `timeout`, `nice` or `sudo`."
+
+  - type: section
+    title: More documents
+    blocks:
+      - type: references
+        items:
+          - { id: qa, title: "V2 Q&A and discussion prep (Vietnamese)", href: qa.html }
+          - { id: cheatsheet, title: "V2 command cheat sheet (Vietnamese)", href: cheatsheet.html }
+          - { id: v1, title: "V1 handout (architecture, card lifecycle, benchmark)", href: ../handout.html }
+          - { id: reference, title: "Reference: commands, agents, hooks", href: ../../reference.md }
+          - { id: install, title: Install guide, href: ../../INSTALL.md }
