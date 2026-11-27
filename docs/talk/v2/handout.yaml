@@ -31,11 +31,11 @@ blocks:
       - type: table
         columns: [Topic, V1, V2]
         rows:
-          - [Opening a lane, Opens whenever the leader asks, "Load gate first: `kit-load` says OK, WARN or STOP"]
+          - [Opening a lane, Opens whenever the leader asks, "Load gate first: kit-load says OK, WARN or STOP"]
           - [Done or stuck?, 15-minute patrol reads the screen, "Lane hooks push events; a 60 s watcher tells the leader, then escalates"]
           - [After the card, "Close the lane, remove the merged worktree", "Reuse the idle lane (pool of 3); worktrees removed only when safe"]
           - [What a lane loads, Same context as the leader, "Lane role: safe context only, hard denies against role escape"]
-          - [Merging, Owner approves every merge, "Leader merges into `epic/*` when the gate passes and review shows High 0"]
+          - [Merging, Owner approves every merge, "Leader merges into epic/* when the gate passes and review shows High 0 · Critical 0"]
           - [The spec, A written brief, Brief plus a clickable prototype with mock data]
 
   - type: section
@@ -55,7 +55,7 @@ blocks:
             text: "Before READY the lane runs `kit-wt-clean --self --light` to drop heavy build folders. The leader sweeps worktrees only when free disk is under 40 GB, and only clean, pushed, unlocked worktrees that no process uses; closed PRs stay."
       - type: callout
         tone: info
-        title: "Lanes from your own scripts: `kit-tmux lanes adopt`"
+        title: "Lanes from your own scripts: kit-tmux lanes adopt"
         text: "Projects that open lanes with their own launcher were invisible to the watcher. `kit-tmux lanes adopt <name> --sock <socket>` writes the running lane into the leader's book. Leader only; the name must match `<PROJ>-C<n>-<tag>` and the tmux session must exist."
 
   - type: section
@@ -96,7 +96,7 @@ blocks:
       - type: table
         columns: ["", "Lane (KIT_ROLE=lane)", Leader]
         rows:
-          - [Loads, "Safe core + the app's rules; `lead_only` files left out", Everything (also the default when no role is set)]
+          - [Loads, "Safe core + the app's rules; lead_only files left out", Everything (also the default when no role is set)]
           - [Safety floor, "Files named safety, secret, security, tenant or permission always load", Same]
           - [Hard denies, "Merge, push to main, force, tag, deploy, edit settings, hooks or the manifest", —]
           - [Anti-escape, "No git remote/config edits, no tmux or new lanes, no gh api writes, no credential reads", —]
@@ -109,11 +109,11 @@ blocks:
     blocks:
       - type: checklist
         items:
-          - text: "Base is `epic/<slug>-<issue>` — never the integration branch, a release branch or anything that deploys."
+          - text: "Base is epic/<slug>-<issue> — never the integration branch, a release branch or anything that deploys."
           - text: Not a draft, not from a fork, opened by the project's author.
-          - text: "Checks green, a `Gate:` line and `Review: HEAD <sha40> · High 0 · Critical 0` for the same head being merged."
-          - text: "No sensitive paths: dot-folders, `CLAUDE.md`, scripts, hooks, settings, deploy files and lockfiles go to the owner."
-          - text: "No deploy trigger: workflow `on:` keys checked on every branch involved."
+          - text: "Checks green, a Gate: line and Review: HEAD <sha40> · High 0 · Critical 0 for the same head being merged."
+          - text: "No sensitive paths: dot-folders, CLAUDE.md, scripts, hooks, settings, deploy files and lockfiles go to the owner."
+          - text: "No deploy trigger: workflow on: keys checked on every branch involved."
       - type: callout
         tone: warning
         title: On by default, fails closed
@@ -147,7 +147,7 @@ blocks:
           - title: "Cron and review (#2)"
             text: "`superadvisor cron --install`: `patrol --clean --apply` every 15 minutes, read-only review at 22:00, report at 08:00. launchd logs now go to `~/Library/Logs`."
           - title: "turn-guard and test-budget (#9)"
-            text: "turn-guard matches a named agent by its real type and only reminds; test-budget catches whole-suite runs behind `timeout`, `nice` or `sudo`."
+            text: "turn-guard matches a named agent by its real type, so a named builder or tester is only reminded, never blocked; test-budget catches whole-suite runs behind `timeout`, `nice` or `sudo`."
 
   - type: section
     title: More documents

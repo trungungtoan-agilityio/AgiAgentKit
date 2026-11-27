@@ -29,7 +29,7 @@ blocks:
           - title: Worktree bị xoá nhầm thì sao?
             text: "`kit-wt-clean` chỉ xoá khi worktree sạch, đã push, không locked, không tiến trình nào có cwd trong đó, và không dùng `--force`. PR CLOSED thì giữ. Lỗi gì trong lúc kiểm cũng nghiêng về giữ. Sweep chỉ chạy khi đĩa trống dưới 40 GB và chỉ leader gọi được."
           - title: Lane có tự merge được không?
-            text: "Không. Lane bị deny cứng merge, push nhánh chính, force, tag, release, deploy. Chỉ leader merge, và chỉ vào nhánh `epic/<slug>-<issue>` khi đủ gate trên cùng head."
+            text: "Không. Lane bị deny cứng merge, push nhánh chính, force, tag, deploy, sửa settings, hooks và manifest. Chỉ leader merge, và chỉ vào nhánh `epic/<slug>-<issue>` khi đủ gate trên cùng head."
           - title: Tắt lead tự merge epic thế nào?
             text: "Thêm dòng `Epic lead-merge: off` vào `CLAUDE.md` trên nhánh tích hợp. Leader đọc từ origin sau fetch; đọc lỗi cũng coi là tắt. Đổi dòng này phải là PR riêng do owner merge."
           - title: KIT_ROLE khác KIT_LANE ở V1 thế nào?

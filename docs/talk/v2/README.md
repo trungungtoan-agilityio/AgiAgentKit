@@ -21,6 +21,7 @@ The lane features on slides 5–11 ship in AgentAutoKit (agent-brains plugin), n
 Rebuild the HTML pages after editing a YAML file:
 
 ```bash
+cd docs/talk/v2
 npx -y @bestagentkits/render@0.3.0 validate handout.yaml --json
 npx -y @bestagentkits/render@0.3.0 handout.yaml --out handout.html
 ```

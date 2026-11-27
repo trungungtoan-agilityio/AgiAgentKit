@@ -68,8 +68,8 @@ function gradientSvg(w, h) {
     { placeholder: { options: { name: "title", type: "title", x: 0.7, y: 0.85, w: 10.0, h: 1.25, fontSize: 34, bold: true, color: C.text1, valign: "top", margin: 0 }, text: "" } },
     { text: { text: "agilityio.com", options: { x: 0.7, y: 7.0, w: 3, h: 0.3, fontSize: 10, color: C.text2, margin: 0 } } },
   ];
-  pres.defineSlideMaster({ title: "Content", background: { color: C.background1 }, objects: contentObjects(), slideNumber: { x: 12.2, y: 7.0, w: 0.5, h: 0.3, fontSize: 10, color: C.text2 } });
-  pres.defineSlideMaster({ title: "Content Mist", background: { color: C.background2 }, objects: contentObjects(), slideNumber: { x: 12.2, y: 7.0, w: 0.5, h: 0.3, fontSize: 10, color: C.text2 } });
+  pres.defineSlideMaster({ title: "Content", background: { color: C.background1 }, objects: contentObjects(), slideNumber: { x: 12.2, y: 7.0, w: 0.5, h: 0.3, fontSize: 10, color: C.text2, align: "right" } });
+  pres.defineSlideMaster({ title: "Content Mist", background: { color: C.background2 }, objects: contentObjects(), slideNumber: { x: 12.2, y: 7.0, w: 0.5, h: 0.3, fontSize: 10, color: C.text2, align: "right" } });
 
   const shadow = () => ({ type: "outer", color: HEX.dk1, opacity: 0.08, blur: 8, offset: 2, angle: 90 });
   const card = (s, x, y, w, h, name, dark = false) =>
@@ -99,7 +99,7 @@ function gradientSvg(w, h) {
   s.addText("Session Superadvisor V2", { placeholder: "title" });
   s.addText("Lanes that open safely, report back by themselves and clean up after the card.", { placeholder: "body" });
   s.addText("Agility IO  ·  Sen Agi  ·  kit updates 25–27 Nov", { x: 0.7, y: 6.55, w: 7.4, h: 0.4, fontSize: 14, color: C.text2, margin: 0, isTextBox: true, objectName: "byline" });
-  s.addNotes("V2 of the Superadvisor talk. The first three slides recap V1 quickly; the rest is what changed between 25 and 27 November: how a lane opens, reports, gets reused and cleans up, plus role-scoped context, gated epic merges and specs written as prototypes.");
+  s.addNotes("V2 of the Superadvisor talk. The next two slides recap V1 quickly; the rest is what changed between 25 and 27 November: how a lane opens, reports, gets reused and cleans up, plus role-scoped context, gated epic merges and specs written as prototypes.");
 
   s = content("Opening", "Recap from V1", "Many sessions in parallel, one person watching them all");
   const probs = [
@@ -160,7 +160,7 @@ function gradientSvg(w, h) {
     ["Done or stuck?", "15-minute patrol reads the screen", "Lane hooks push events; a 60 s watcher tells the leader, then escalates"],
     ["After the card", "Close the lane, remove the merged worktree", "Reuse the idle lane (pool of 3); worktrees removed only when safe"],
     ["What a lane loads", "Same context as the leader", "Lane role: safe context only, hard denies against role escape"],
-    ["Merging", "Owner approves every merge", "Leader merges into epic/* when the gate passes and review shows High 0"],
+    ["Merging", "Owner approves every merge", "Leader merges into epic/* when the gate passes and review shows High 0 · Critical 0"],
     ["The spec", "A written brief", "Brief plus a clickable prototype with mock data"],
   ].map((r, i) => i === 0 ? r : r.map((c, j) => ({ text: c, options: { bold: j === 0, color: j === 0 ? C.accent1 : j === 1 ? C.text2 : C.text1, fill: { color: C.background1 } } })));
   tbl(s, diffRows, { x: 0.7, y: 2.35, w: 11.9, colW: [2.4, 4.0, 5.5], fontSize: 14, rowH: 0.56, margin: [0.05, 0.15, 0.05, 0.15], objectName: "v1 v2 table" });
@@ -324,7 +324,7 @@ function gradientSvg(w, h) {
     s.addText(agi[i][1], { x: x + 0.4, y: y + 1.5, w: w - 0.8, h: 0.5, fontSize: 19, bold: true, color: C.text1, margin: 0, valign: "top", isTextBox: true, objectName: `agi title ${i + 1}` });
     s.addText(agi[i][2], { x: x + 0.4, y: y + 2.05, w: w - 0.8, h: 1.55, fontSize: 14, color: C.text2, margin: 0, valign: "top", isTextBox: true, objectName: `agi text ${i + 1}` });
   }
-  note(s, "Hook tests: 164 pass. turn-guard now matches a named agent by its real type and only reminds; test-budget catches whole-suite runs behind timeout, nice or sudo.", 6.4, 0.5, 12);
+  note(s, "Hook tests: 164 pass. A named builder or tester is now only reminded by turn-guard, never blocked; test-budget catches whole-suite runs behind timeout, nice or sudo.", 6.4, 0.5, 12);
   s.addNotes("AgiAgentKit is the small kit behind the demo; it does not include the AgentAutoKit lane features from the previous slides. This week it got the guard fixes ported from the big kit: owner-guard is stricter in lanes yet stops tripping on commit messages, the integration branch is protected through KIT_PROTECTED_BRANCHES set by lane open, and gh api in a lane is read-only. superadvisor cron installs patrol, nightly review and morning report; launchd logs moved out of protected folders because a log there made the job exit silently.");
 
   // ---------- 3. Demo ----------
@@ -363,7 +363,7 @@ function gradientSvg(w, h) {
     { text: "claude plugin install agi-agent-kit@agi-agent-kit", options: { breakLine: true } },
     { text: "AgiAgentKit/bin/superadvisor init /path/to/project", options: { breakLine: true } },
     { text: "AgiAgentKit/bin/superadvisor up /path/to/project" },
-  ], { x: 0.7, y: 2.45, w: 7.9, h: 2.4, fontFace: "Courier New", fontSize: 13, color: C.background1, fill: { color: C.text1 }, margin: [0.25, 0.35, 0.25, 0.35], valign: "middle", paraSpaceAfter: 6, isTextBox: true, objectName: "install commands" });
+  ], { x: 0.7, y: 2.45, w: 7.9, h: 2.4, fontFace: "Courier New", fontSize: 13, color: C.background1, fill: { color: C.text1 }, margin: [25.2, 25.2, 18, 18], valign: "middle", paraSpaceAfter: 6, isTextBox: true, objectName: "install commands" });
   card(s, 9.0, 2.45, 3.6, 2.4, "includes card");
   s.addText([{ text: "Includes", options: { fontSize: 18, bold: true, color: C.text1, breakLine: true } }, { text: "Five tiered agents, six hooks (four deny, two log only), the superadvisor CLI with cron, a sample app with a six-card backlog, and a benchmark.", options: { fontSize: 14, color: C.text2 } }],
     { x: 9.3, y: 2.6, w: 3.0, h: 2.1, margin: 0, valign: "top", isTextBox: true, objectName: "includes text" });

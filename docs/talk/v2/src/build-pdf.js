@@ -95,7 +95,7 @@ contentSlide("What's new", "V1 → V2: what changed", table(0.7, 2.35, [2.4, 4.0
   ["Done or stuck?", "15-minute patrol reads the screen", "Lane hooks push events; a 60 s watcher tells the leader, then escalates"],
   ["After the card", "Close the lane, remove the merged worktree", "Reuse the idle lane (pool of 3); worktrees removed only when safe"],
   ["What a lane loads", "Same context as the leader", "Lane role: safe context only, hard denies against role escape"],
-  ["Merging", "Owner approves every merge", "Leader merges into epic/* when the gate passes and review shows High 0"],
+  ["Merging", "Owner approves every merge", "Leader merges into epic/* when the gate passes and review shows High 0 · Critical 0"],
   ["The spec", "A written brief", "Brief plus a clickable prototype with mock data"],
 ], { cell: (j) => "background:#fff;" + (j === 0 ? `font-weight:700;color:${K.purple}` : j === 1 ? `color:${K.body}` : "") }) +
   note("The lane features ship in AgentAutoKit (agent-brains 0.11–0.14, kit 2.35–2.37). AgiAgentKit, the kit you can download for this talk, got the hook and cron fixes (slide 12).", 6.45, 0.5), true);
@@ -192,7 +192,7 @@ contentSlide("7 · In AgiAgentKit this week", "What landed in the downloadable k
   ["FaClock", "Cron and review (#2)", "cron --install: patrol every 15 min, review 22:00, report 08:00. launchd logs now go to ~/Library/Logs."],
   ["FaBookOpen", "Talk kit (#5–#8)", "ak-render skill, handout, Q&A, cheat sheet, isometric diagrams and the demo video inside the deck."],
 ].map(([i, t, d], k) => { const x = 0.7 + k * 4.05, y = 2.45; return card(x, y, 3.75, 3.75) + iconCircle(x + 0.4, y + 0.4, 0.9, i) + text(x + 0.4, y + 1.5, 2.95, 0.5, 19, `font-weight:700;color:${K.ink}`, esc(t)) + text(x + 0.4, y + 2.05, 2.95, 1.55, 14, `color:${K.body};line-height:1.35`, esc(d)); }).join("") +
-  note("Hook tests: 164 pass. turn-guard now matches a named agent by its real type and only reminds; test-budget catches whole-suite runs behind timeout, nice or sudo.", 6.4, 0.5));
+  note("Hook tests: 164 pass. A named builder or tester is now only reminded by turn-guard, never blocked; test-budget catches whole-suite runs behind timeout, nice or sudo.", 6.4, 0.5));
 
 // 13 demo (video in the pptx)
 contentSlide("Demo · sample project “Library loans”", "A six-card backlog, from small fixes to a hard bug",
@@ -229,5 +229,5 @@ th { background: ${K.purple}; color: #fff; text-align: left; font-weight: 700 }
 th, td { border: 1px solid ${K.line}; padding: .05in .15in; vertical-align: middle; box-sizing: border-box }
 </style></head><body>${slides.join("\n")}</body></html>`;
 fs.writeFileSync(HTML, html);
-execFileSync(CHROME, ["--headless=new", "--disable-gpu", "--no-pdf-header-footer", `--print-to-pdf=${PDF}`, "file://" + HTML], { stdio: "ignore" });
+execFileSync(CHROME, ["--headless=new", "--disable-gpu", "--no-pdf-header-footer", `--print-to-pdf=${PDF}`, require("url").pathToFileURL(HTML).href], { stdio: "ignore" });
 console.log("wrote " + PDF + " (" + slides.length + " pages)");

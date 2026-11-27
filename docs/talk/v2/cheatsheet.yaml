@@ -90,6 +90,6 @@ blocks:
         columns: [Hook, Thay đổi (#9)]
         rows:
           - [owner-guard, "Trong lane chặn thêm: push force/mirror/delete/--no-verify/tag, release, merge qua API, in token, sửa hook dự án và brains/lead.md. gh api chỉ đọc. KIT_PROTECTED_BRANCHES. Văn xuôi trong ngoặc được bỏ qua."]
-          - [turn-guard, Khớp type thật của agent; chỉ nhắc]
+          - [turn-guard, "Khớp type thật của agent; builder/tester gọi theo tên chỉ được nhắc, không bị chặn"]
           - [test-budget, "Bắt cả bộ test chạy sau timeout, nice, sudo"]
           - [cron (launchd), "Log chuyển ra ~/Library/Logs"]
