@@ -40,7 +40,7 @@ blocks:
         rows:
           - [Owner, "Decides product; approves merges to the integration branch, production, permissions", Hand-feed work to each lane]
           - [Leader, "Sizes the backlog, writes briefs, opens and reuses lanes, unblocks, merges within limits", Write large blocks of code itself]
-          - [Lane, "One card, one worktree, one PR; reports READY by itself", "Merge, push to main, release or change permissions — hooks block it"]
+          - [Lane, "One card, one worktree, one PR; loads only safe context; reports READY by itself", "Merge, push to main, release or change permissions — hooks block it"]
           - [Brains, "15-minute patrol, nightly review, morning report", Become a second chat channel]
       - type: diagram-panel
         title: The leader's loop, after every event
@@ -137,15 +137,15 @@ blocks:
       - type: steps
         items:
           - title: 1. Gate
-            text: "`kit-load` measures free RAM, swap, load per core, free disk, booted simulators and idle Colima. Exit 0/1/2 = OK/WARN/STOP, `--json` for scripts. STOP refuses `lane-launch`, `lane-resume` and `--bare` (logged `load-refused`); `--force-load` opens anyway and logs `load-force`. Opening the leader only warns. Swap alone does not stop lanes: STOP needs free RAM under 30% or high memory pressure. The same probe feeds lead-patrol, and a load-hint hook adds context before `lanes reuse` and session resume; it never blocks."
+            text: "`kit-load` measures free RAM, swap, load per core, free disk, booted simulators and idle Colima. Exit 0/1/2 = OK/WARN/STOP, `--json` for scripts. STOP refuses `lane-launch`, `lane-resume` and `--bare` (logged `load-refused`); `--force-load` opens anyway and logs `load-force`. Opening the leader only warns. Swap alone does not stop lanes: STOP needs free RAM under 30% or high memory pressure. The same probe feeds lead-patrol, and a load-hint hook adds context before `lanes reuse` and session resume; it never blocks. Only one iOS simulator at a time, shut down after use; an idle Colima VM still holds RAM. `--force-load` is for the owner."
           - title: 2. Run in role
             text: "The lane starts with `KIT_ROLE=lane`: it loads the safe core and the app's rules, never files marked `lead_only`, and hits hard denies for merge, push to main, force, tag, deploy and settings or hooks edits."
           - title: 3. Report back
-            text: "Stop, SessionEnd and idle hooks call `bin/lane-event`, which appends one line to `lane-events.jsonl` (DONE, IDLE, WAITING, EXIT or LIMIT, with the PR and sha from the READY line). A watcher per leader turns them into inbox messages."
+            text: "Stop, SessionEnd and idle hooks call `bin/lane-event`, which appends one line to `lane-events.jsonl` (DONE, IDLE, WAITING, EXIT or LIMIT, with the PR and sha from the READY line). A watcher per leader turns them into inbox messages. Each line holds only structured fields (lane, account, project, type, PR, sha), never free text. The watcher starts with `lane-launch` or `lanes reuse` and stops when the leader has no lanes."
           - title: 4. Reuse
-            text: "`kit-tmux lanes reuse <lane> <brief>` hands the next brief to an idle lane of the same repo and account. New lanes first look for an idle one in the pool (`lane_pool`, default 3); `--new` skips the pool."
+            text: "`kit-tmux lanes reuse <lane> <brief>` hands the next brief to an idle lane of the same repo and account. New lanes first look for an idle one in the pool (`lane_pool`, default 3); `--new` skips the pool. Reuse presses Enter only when the input holds exactly `/clear`, waits for idle, then types the brief, checking for open prompts at every step. The pool only takes an idle lane with no open PR; its size is `lane_pool` in `machine.json`."
           - title: 5. Clean up
-            text: "Before READY the lane runs `kit-wt-clean --self --light` to drop heavy build folders. The leader sweeps worktrees only when free disk is under 40 GB, and only clean, pushed, unlocked worktrees that no process uses; closed PRs stay. Any error while checking keeps the worktree."
+            text: "Before READY the lane runs `kit-wt-clean --self --light` to drop heavy build folders. The leader sweeps worktrees only when free disk is under 40 GB, and only clean, pushed, unlocked worktrees that no process uses; closed PRs stay. Any error while checking keeps the worktree. `--light` never touches tracked files or anything outside the lane's own worktree; the leader's sweep is `kit-wt-clean --sweep`."
       - type: callout
         tone: info
         title: "Lanes from your own scripts: kit-tmux lanes adopt"

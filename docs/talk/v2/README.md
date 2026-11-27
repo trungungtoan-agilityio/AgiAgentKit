@@ -21,7 +21,7 @@ The slides stay at overview level; the details behind them (load gate thresholds
 and cleanup rules, adopt, role-scoped context) are in `handout.html`.
 
 The superadvisor CLI, the five agents, the six hooks, cron, the sample app and the benchmark are in AgiAgentKit. The
-lane lifecycle (slide 8) and role-scoped context (5), the epic merge gate (12) and the prototype template (13) ship in
+lane lifecycle (slide 8), role-scoped context (5), the epic merge gate (12) and the prototype template (13) ship in
 AgentAutoKit (agent-brains plugin).
 
 Rebuild the HTML pages after editing a YAML file:

@@ -225,7 +225,7 @@ function gradientSvg(w, h) {
   const life = [
     ["FaGaugeHigh", "1. Gate", "Machine too full? The lane does not open."],
     ["FaUserShield", "2. Run in role", "Safe context only; it cannot act as the leader."],
-    ["FaBell", "3. Report back", "A watcher tells the leader within a minute."],
+    ["FaBell", "3. Report back", "A watcher tells the leader in about a minute."],
     ["FaRecycle", "4. Reuse", "An idle lane takes the next brief."],
     ["FaBroom", "5. Clean up", "Heavy build folders first; worktrees only when safe."],
   ];

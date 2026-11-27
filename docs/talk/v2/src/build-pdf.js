@@ -147,7 +147,7 @@ contentSlide("Lane lifecycle", "A lane’s life in five steps",
   box(1.3, 3.14, 10.5, 0.02, `background:${K.line}`) + [
     ["FaGaugeHigh", "1. Gate", "Machine too full? The lane does not open."],
     ["FaUserShield", "2. Run in role", "Safe context only; it cannot act as the leader."],
-    ["FaBell", "3. Report back", "A watcher tells the leader within a minute."],
+    ["FaBell", "3. Report back", "A watcher tells the leader in about a minute."],
     ["FaRecycle", "4. Reuse", "An idle lane takes the next brief."],
     ["FaBroom", "5. Clean up", "Heavy build folders first; worktrees only when safe."],
   ].map(([i, t, d], k) => { const cx = 0.7 + k * 2.44; return iconCircle(cx + 0.35, 2.6, 1.1, i) + text(cx, 3.95, 2.2, 0.45, 18, `font-weight:700;color:${K.ink}`, esc(t)) + text(cx, 4.45, 2.1, 1.1, 14, `color:${K.body};line-height:1.35`, esc(d)); }).join("") +
