@@ -110,9 +110,9 @@ contentSlide("Roles", "Four roles, each knows what is not its job", table(0.7, 2
   ["Role", "Does", "Never does"],
   ["Owner", "Decides product; approves merges to the integration branch, production, permissions", "Hand-feed work to each lane"],
   ["Leader", "Sizes the backlog, writes briefs, opens and reuses lanes, unblocks, merges within limits", "Write large blocks of code itself"],
-  ["Lane", "One card, one worktree, one PR; reports READY by itself", "Merge, push to main, release or change permissions — hooks block it"],
+  ["Lane", "One card, one worktree, one PR; loads only safe context; reports READY by itself", "Merge, push to main, release or change permissions — hooks block it"],
   ["Brains", "Patrol every 15 min, nightly review, morning report", "Become a second chat channel"],
-], { cell: tcell }) + note("Patrol, nightly review, morning report and auto-close of idle merged lanes run on the schedule set with superadvisor cron --install.", 6.45, 0.4, 13), true);
+], { cell: tcell }) + note("Lane and leader load different context (KIT_ROLE): a lane skips lead-only files, but safety and permission rules always load.", 6.45, 0.4, 13), true);
 
 // 6 one card
 contentSlide("One card", "One card, from brief to merge", [
@@ -143,64 +143,17 @@ contentSlide("The leader", "The leader’s loop, after every event", grid6([
 ], 18, 14), true);
 
 // 8 lane lifecycle
-contentSlide("Lane lifecycle · AgentAutoKit", "A lane’s life in five steps",
+contentSlide("Lane lifecycle", "A lane’s life in five steps",
   box(1.3, 3.14, 10.5, 0.02, `background:${K.line}`) + [
-    ["FaGaugeHigh", "1. Gate", "kit-load measures the machine before a lane opens."],
-    ["FaUserShield", "2. Run in role", "Safe context only; hard denies against role escape."],
-    ["FaBell", "3. Report back", "Hooks log events; a watcher tells the leader."],
-    ["FaRecycle", "4. Reuse", "An idle lane takes the next brief; pool of 3."],
-    ["FaBroom", "5. Clean up", "Heavy build folders go first; worktrees only when safe."],
+    ["FaGaugeHigh", "1. Gate", "Machine too full? The lane does not open."],
+    ["FaUserShield", "2. Run in role", "Safe context only; it cannot act as the leader."],
+    ["FaBell", "3. Report back", "A watcher tells the leader in about a minute."],
+    ["FaRecycle", "4. Reuse", "An idle lane takes the next brief."],
+    ["FaBroom", "5. Clean up", "Heavy build folders first; worktrees only when safe."],
   ].map(([i, t, d], k) => { const cx = 0.7 + k * 2.44; return iconCircle(cx + 0.35, 2.6, 1.1, i) + text(cx, 3.95, 2.2, 0.45, 18, `font-weight:700;color:${K.ink}`, esc(t)) + text(cx, 4.45, 2.1, 1.1, 14, `color:${K.body};line-height:1.35`, esc(d)); }).join("") +
-  card(0.7, 5.8, 11.9, 0.85) + iconCircle(0.9, 5.92, 0.6, "FaLink") +
-  box(1.75, 5.8, 10.6, 0.85, "", twoLine("Lanes from your own scripts: kit-tmux lanes adopt", "Registers a running tmux lane in the leader’s book so the watcher sees it. Leader only; checks name, socket and that the session is real.", 15, 12)));
+  note("Thresholds, events, the lane pool and adopt for your own launcher scripts: see the handout.", 6.1, 0.4, 13));
 
-// 9 load gate
-contentSlide("1 · Load gate · AgentAutoKit", "Measure the machine before opening a lane",
-  table(0.7, 2.4, [2.5, 5.1], 0.52, 14, [
-    ["kit-load measures", "Why it matters"],
-    ["Free RAM %", "Every lane is a Claude Code session plus its tools"],
-    ["Swap", "STOP only when free RAM < 30% or memory pressure is high"],
-    ["Load per core", "Builds and tests in several lanes at once"],
-    ["Free disk", "Under 40 GB the leader is told to sweep worktrees"],
-    ["Booted simulators", "One iOS simulator at a time, shut down after use"],
-    ["Idle Colima", "A Docker VM with no container still holds RAM"],
-  ], { cell: (j) => "background:#fff;" + (j === 0 ? "font-weight:700" : "") }) +
-  card(8.8, 2.4, 3.8, 3.64) + iconCircle(9.2, 2.75, 0.9, "FaTrafficLight") +
-  box(9.2, 3.8, 3.0, 2.1, "", `<b style="font-size:18pt;color:${K.ink}">OK · WARN · STOP</b><p style="font-size:14pt;color:${K.body};margin:6pt 0 0;line-height:1.35">Exit 0, 1 or 2. STOP refuses lane-launch, lane-resume and --bare; opening the leader only warns. Override: --force-load, always logged.</p>`) +
-  note("The same probe feeds lead-patrol. A load-hint hook adds context before lanes reuse and session resume; it never blocks.", 6.4, 0.4), true);
-
-// 10 report back
-contentSlide("2 · Report back · AgentAutoKit", "Lanes report to the leader by themselves",
-  arrowsSvg([0, 1, 2].map((k) => { const x = 0.7 + k * 3.1 + 2.6; return [x + 0.05, 2.9, x + 0.45, 2.9]; }), "r") +
-  [
-    ["Lane hooks", "Stop · SessionEnd · idle", ""], ["lane-events.jsonl", "DONE IDLE WAITING EXIT LIMIT", ""],
-    ["Watcher", "about every 60 s, one per leader", "guard"], ["Leader", "inbox + lead-nudge hook", "lead"],
-  ].map(([t, d, k], i) => { const x = 0.7 + i * 3.1, lead = k === "lead"; return box(x, 2.4, 2.6, 1.0, `background:${lead ? K.ink : "#fff"};border:${k === "guard" ? `2px solid ${K.blue}` : `1px solid ${lead ? K.ink : K.line}`};box-shadow:0 2px 8px rgba(10,38,48,.08);padding:0 .2in;box-sizing:border-box`, twoLine(t, d, 16, 12, lead ? "#fff" : K.ink, lead ? K.line : K.body)); }).join("") +
-  card(0.7, 3.85, 5.85, 2.35) + box(1.0, 4.0, 5.3, 2.05, "", `<b style="font-size:18pt;color:${K.ink}">What the watcher flags</b><ul style="font-size:14pt;color:${K.body};margin:6pt 0 0;padding-left:.25in;line-height:1.45">${["A new READY PR line", "IDLE for more than 10 minutes", "Stuck, or WAITING on a prompt", "DEAD or orphan; usage limit or auth"].map((l) => `<li>${esc(l)}</li>`).join("")}</ul>`) +
-  darkCard(6.75, 3.85, 5.85, 2.35) + box(7.05, 4.0, 5.3, 2.05, "", `<b style="font-size:18pt;color:#fff">Escalation</b><p style="font-size:14pt;color:${K.line};margin:6pt 0 0;line-height:1.4">Stuck, DEAD or WAITING for 15 min and still unhandled 15 min after the alert: an alert message, a line in owner-alerts.log, and patrol shows the job until it is resolved.</p>`) +
-  note("Messages are marked unverified, never the owner’s words. An idle leader gets at most one typed line every 5 minutes.", 6.4, 0.4));
-
-// 11 reuse and clean up
-contentSlide("3 · Reuse and clean up · AgentAutoKit", "Reuse lanes; clean up only what is safe", [
-  ["FaRecycle", "kit-tmux lanes reuse <lane> <brief>", "Same repo and account. Enter only when the input holds exactly /clear; waits for idle, then types the brief."],
-  ["FaLayerGroup", "Lane pool", "Before a new lane, the kit looks for an idle one with no open PR. Cap lane_pool, default 3; --new skips the pool."],
-  ["FaBroom", "kit-wt-clean --self --light", "Before READY the lane drops heavy build folders. Never tracked files, never outside its own worktree."],
-  ["FaHardDrive", "Leader sweeps when disk is low", "--sweep only under the 40 GB line. Only clean, pushed, unlocked worktrees no process uses; closed PRs stay."],
-].map(([i, t, d], k) => { const x = 0.7 + (k % 2) * 6.05, y = 2.4 + Math.floor(k / 2) * 1.95; return card(x, y, 5.85, 1.75) + iconCircle(x + 0.25, y + 0.3, 0.8, i) + box(x + 1.3, y, 4.35, 1.75, "", twoLine(t, d, 17, 13)); }).join("") +
-  note("Any error while checking keeps the worktree. Orphan lanes are flagged and the close command is printed, never run.", 6.4, 0.4), true);
-
-// 12 roles in kit-context
-contentSlide("Roles in kit-context · AgentAutoKit", "Lane and leader load different context", table(0.7, 2.4, [2.4, 6.2, 3.3], 0.64, 14, [
-  ["", "Lane · KIT_ROLE=lane", "Leader"],
-  ["Loads", "Safe core + the app’s rules; lead_only files left out", "Everything (also the default when no role is set)"],
-  ["Safety floor", "Files named safety, secret, security, tenant or permission always load", "Same"],
-  ["Hard denies", "Merge, push to main, force, tag, deploy, edit settings, hooks or manifest", "—"],
-  ["Anti-escape", "No git remote/config edits, no tmux or new lanes, no gh api writes, no credential reads", "—"],
-  ["Lead-only commands", "Refused: the guard walks the process tree and fails closed", "Allowed"],
-], { cell: tcell }) +
-  note("Manifest .claude/context-roles.json (lead_only, safety, lane_deny). A broken manifest stops the lane from opening. Denies are a second net; the real lock is hooks plus branch protection.", 6.3, 0.6));
-
-// 13 hooks
+// 9 hooks
 contentSlide("Hooks", "Guardrails live in hooks, not in promises", table(0.7, 2.4, [2.5, 6.6, 2.8], 0.52, 14, [
   ["Hook", "Does", "Threshold"],
   ["turn-guard", "Denies long builder/tester runs (Read, Grep still pass)", "Warn 60 & 90, deny from 130"],
@@ -212,7 +165,7 @@ contentSlide("Hooks", "Guardrails live in hooks, not in promises", table(0.7, 2.
 ], { cell: (j) => "background:#fff;" + (j === 0 ? "font-weight:700" : "") }) +
   note("AgiAgentKit ships six hooks: four deny (with guidance, never a prompt in auto mode), two only log. Quoted prose in commit messages does not trip owner-guard.", 6.45, 0.5, 13), true);
 
-// 14 model routing
+// 10 model routing
 contentSlide("Model routing", "Clear work goes to cheap models, hard work to strong ones",
   table(0.7, 2.45, [1.7, 1.6, 4.3], 0.62, 16, [
     ["Agent", "Model", "When"],
@@ -226,7 +179,7 @@ contentSlide("Model routing", "Clear work goes to cheap models, hard work to str
   box(9.2, 3.95, 3.0, 2.0, "", `<b style="font-size:18pt;color:${K.ink}">Pinned, not chosen on the fly</b><p style="font-size:15pt;color:${K.body};margin:6pt 0 0;line-height:1.35">Each agent pins its model. The agent-routing hook rejects model overrides at call time.</p>`) +
   text(0.7, 6.4, 8.0, 0.4, 13, `color:${K.body}`, "Kit price table (input/output, USD per 1M tokens): sonnet ≈ 2× haiku, opus ≈ 4× haiku."));
 
-// 15 measure
+// 11 measure
 contentSlide("Measure everything", "Measure the main session, not just subagents", [
   ["~70%", "of tokens are spent in the main session — the part nobody measured", "FaGaugeHigh"],
   ["153 → 0", "subagent runs over 100 turns per week, after turning on turn-guard", "FaChartColumn"],
@@ -234,8 +187,8 @@ contentSlide("Measure everything", "Measure the main session, not just subagents
 ].map(([num, d, i], k) => { const x = 0.7 + k * 4.05; return card(x, 2.45, 3.75, 3.5) + iconCircle(x + 0.4, 2.8, 0.8, i) + box(x + 0.4, 3.75, 3.1, 0.9, `display:flex;align-items:center;font-size:40pt;font-weight:700;color:${K.purple}`, esc(num)) + text(x + 0.4, 4.75, 3.0, 1.05, 15, `color:${K.body};line-height:1.35`, esc(d)); }).join("") +
   text(0.7, 6.15, 11.9, 0.6, 12, `font-style:italic;color:${K.body};line-height:1.35`, "How measured: events.jsonl token logs on one internal project, anonymized · API list prices. Benchmark: bench/results.md, six demo cards, N = 1 per card, Sonnet leader + tiered agents vs one Opus session; wall time about the same."), true);
 
-// 16 epic merge
-contentSlide("Gated merge into epic branches · AgentAutoKit", "The leader merges into epic branches, behind a gate", grid6([
+// 12 epic merge
+contentSlide("Epic merge", "The leader merges into epic branches, behind a gate", grid6([
   ["FaCodeBranch", "Base is epic/<slug>-<issue>", "Never the integration or a release branch."],
   ["FaUserCheck", "The right PR", "Not a draft, not from a fork, the project’s author."],
   ["FaCircleCheck", "Gate and Review on the same head", "Gate PASS and Review High 0 · Critical 0 for that sha."],
@@ -244,8 +197,8 @@ contentSlide("Gated merge into epic branches · AgentAutoKit", "The leader merge
   ["FaToggleOn", "On by default, fails closed", "Epic lead-merge: off in CLAUDE.md turns it off; read errors count as off."],
 ], 17, 14));
 
-// 17 spec by prototype
-contentSlide("Spec by prototype · AgentAutoKit", "Spec by prototype, before any code",
+// 13 spec by prototype
+contentSlide("Spec by prototype", "Spec by prototype, before any code",
   arrowsSvg([0, 1, 2, 3].map((k) => { const x = 0.7 + k * 2.44 + 2.15; return [x + 0.03, 3.225, x + 0.26, 3.225]; }), "p") +
   [
     ["FaBookOpen", "Guide", "Demo script + UAT"], ["FaMobileScreen", "App", "Phone frame, tabs"], ["FaDesktop", "Web", "Responsive, cart"],
@@ -258,7 +211,7 @@ contentSlide("Spec by prototype · AgentAutoKit", "Spec by prototype, before any
     ["FaMask", "Mock data only", "Made-up names and orders, never real data. Linked in the issue as the behavior spec."],
   ].map(([i, t, d], k) => { const x = 0.7 + k * 4.025, y = 4.75; return card(x, y, 3.85, 1.75) + iconCircle(x + 0.25, y + 0.25, 0.7, i) + box(x + 1.15, y + 0.2, 2.5, 1.35, "", `<b style="font-size:16pt;color:${K.ink}">${esc(t)}</b><p style="font-size:12pt;color:${K.body};margin:4pt 0 0;line-height:1.35">${esc(d)}</p>`); }).join(""), true);
 
-// 18 demo (video in the pptx)
+// 14 demo (video in the pptx)
 contentSlide("Demo · sample project “Library loans”", "A six-card backlog, from small fixes to a hard bug",
   box(1.3, 3.14, 10.7, 0.02, `background:${K.line}`) + [
     ["FaPlay", "Start the leader", "superadvisor up; it shows on the phone"], ["FaMagnifyingGlass", "Size the backlog", "S, M or L; agents by tier"],
@@ -269,7 +222,7 @@ contentSlide("Demo · sample project “Library loans”", "A six-card backlog, 
   box(.7, 5.85, 1.96, 1.1, "display:flex;align-items:center;justify-content:center", `<div style="width:.5in;height:.5in;border-radius:50%;background:rgba(10,38,48,.55);display:flex;align-items:center;justify-content:center"><div style="width:0;height:0;border-left:.14in solid #fff;border-top:.09in solid transparent;border-bottom:.09in solid transparent;margin-left:.04in"></div></div>`) +
   box(2.95, 5.85, 9.65, 1.1, "display:flex;flex-direction:column;justify-content:center", `<b style="font-size:16pt;color:${K.ink}">Demo recording (embedded in the PowerPoint)</b><p style="font-size:13pt;color:${K.body};margin:6pt 0 0;line-height:1.35">One minute: problem → architecture → init → up → lane → PR → merge → close (card C3) → benchmark. File: docs/talk/src/assets/agikit-demo.mp4</p>`));
 
-// 19 try it
+// 15 try it
 contentSlide("Try it", "Install in about ten minutes",
   box(0.7, 2.45, 7.9, 2.6, `background:${K.ink};color:#fff;font-family:'Courier New',monospace;font-size:13pt;padding:.25in .35in;box-sizing:border-box;display:flex;flex-direction:column;justify-content:center;gap:6pt`,
     ["git clone https://github.com/trungungtoan-agilityio/AgiAgentKit", "claude plugin marketplace add ./AgiAgentKit", "claude plugin install agi-agent-kit@agi-agent-kit", "AgiAgentKit/bin/superadvisor init /path/to/project", "AgiAgentKit/bin/superadvisor up /path/to/project", "AgiAgentKit/bin/superadvisor cron --install --project /path/to/project"].map((l) => `<div>${l}</div>`).join("")) +
@@ -278,7 +231,7 @@ contentSlide("Try it", "Install in about ten minutes",
   text(0.7, 5.8, 11.9, 0.4, 15, `color:${K.body}`, "Read after the talk:  docs/talk/v2/handout.html  ·  cheatsheet.html  ·  qa.html") +
   text(0.7, 6.25, 11.9, 0.4, 13, `font-style:italic;color:${K.body}`, "Load gate, watcher, lane reuse, roles, epic merge and the prototype template ship in AgentAutoKit (agent-brains plugin)."), true);
 
-// 20 thanks
+// 16 thanks
 coverSlide("Thank you", "Questions?  One leader, lanes that gate, report and clean up, guardrails in hooks — and measure everything.",
   `<a href="https://www.agilityio.com/" style="color:${K.purple};font-weight:700;text-decoration:none">agilityio.com</a>`, "");
 
