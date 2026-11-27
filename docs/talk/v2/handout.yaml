@@ -137,7 +137,7 @@ blocks:
       - type: steps
         items:
           - title: 1. Gate
-            text: "`kit-load` measures free RAM, swap, load per core, free disk, booted simulators and idle Colima. Exit 0/1/2 = OK/WARN/STOP, `--json` for scripts. STOP refuses `lane-launch`, `lane-resume` and `--bare` (logged `load-refused`); `--force-load` opens anyway and logs `load-force`. Opening the leader only warns. Swap alone does not stop lanes: STOP needs free RAM under 30% or high memory pressure."
+            text: "`kit-load` measures free RAM, swap, load per core, free disk, booted simulators and idle Colima. Exit 0/1/2 = OK/WARN/STOP, `--json` for scripts. STOP refuses `lane-launch`, `lane-resume` and `--bare` (logged `load-refused`); `--force-load` opens anyway and logs `load-force`. Opening the leader only warns. Swap alone does not stop lanes: STOP needs free RAM under 30% or high memory pressure. The same probe feeds lead-patrol, and a load-hint hook adds context before `lanes reuse` and session resume; it never blocks."
           - title: 2. Run in role
             text: "The lane starts with `KIT_ROLE=lane`: it loads the safe core and the app's rules, never files marked `lead_only`, and hits hard denies for merge, push to main, force, tag, deploy and settings or hooks edits."
           - title: 3. Report back
@@ -145,7 +145,7 @@ blocks:
           - title: 4. Reuse
             text: "`kit-tmux lanes reuse <lane> <brief>` hands the next brief to an idle lane of the same repo and account. New lanes first look for an idle one in the pool (`lane_pool`, default 3); `--new` skips the pool."
           - title: 5. Clean up
-            text: "Before READY the lane runs `kit-wt-clean --self --light` to drop heavy build folders. The leader sweeps worktrees only when free disk is under 40 GB, and only clean, pushed, unlocked worktrees that no process uses; closed PRs stay."
+            text: "Before READY the lane runs `kit-wt-clean --self --light` to drop heavy build folders. The leader sweeps worktrees only when free disk is under 40 GB, and only clean, pushed, unlocked worktrees that no process uses; closed PRs stay. Any error while checking keeps the worktree."
       - type: callout
         tone: info
         title: "Lanes from your own scripts: kit-tmux lanes adopt"

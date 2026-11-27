@@ -22,4 +22,4 @@ default accent colors. After building, render the PDF and read every page for ov
 ## Assets
 
 Read from `docs/talk/src/assets/` through a relative path (`../../src/assets/`): logo SVG/PNG, `agikit-demo.mp4`
-(embedded in slide 18 of the pptx) and `demo-poster.png` (video cover in the pptx, still image on slide 18 of the PDF).
+(embedded in slide 14 of the pptx) and `demo-poster.png` (video cover in the pptx, still image on slide 14 of the PDF).

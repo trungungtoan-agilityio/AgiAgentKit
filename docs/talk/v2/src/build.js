@@ -174,12 +174,12 @@ function gradientSvg(w, h) {
     ["Role", "Does", "Never does"],
     ["Owner", "Decides product; approves merges to the integration branch, production, permissions", "Hand-feed work to each lane"],
     ["Leader", "Sizes the backlog, writes briefs, opens and reuses lanes, unblocks, merges within limits", "Write large blocks of code itself"],
-    ["Lane", "One card, one worktree, one PR; reports READY by itself", "Merge, push to main, release or change permissions — hooks block it"],
+    ["Lane", "One card, one worktree, one PR; loads only safe context; reports READY by itself", "Merge, push to main, release or change permissions — hooks block it"],
     ["Brains", "Patrol every 15 min, nightly review, morning report", "Become a second chat channel"],
   ], (j) => ({ bold: j === 0, color: j === 0 ? C.accent1 : C.text1, fill: { color: C.background1 } })),
   { x: 0.7, y: 2.45, w: 11.9, colW: [1.9, 5.7, 4.3], fontSize: 16, rowH: 0.75, margin: [0.08, 0.15, 0.08, 0.15], objectName: "roles table" });
-  note(s, "Patrol, nightly review, morning report and auto-close of idle merged lanes run on the schedule set with superadvisor cron --install.", 6.45, 0.4, 13);
-  s.addNotes("The key column is Never does. A lane cannot merge not because it promises not to, but because a hook blocks it. Brains is not a chat session; it is the leader's background memory and patrol.");
+  note(s, "Lane and leader load different context (KIT_ROLE): a lane skips lead-only files, but safety and permission rules always load.", 6.45, 0.4, 13);
+  s.addNotes("The key column is Never does. A lane cannot merge not because it promises not to, but because a hook blocks it. KIT_ROLE=lane loads the safe core and the app's rules and leaves out files the manifest marks lead_only, which saves context on every lane turn; files about safety, secrets, security, tenants or permissions always load, and lead-only commands check the real process tree. With no role set a session counts as the leader. Brains is not a chat session; it is the leader's background memory and patrol, run on the schedule set with superadvisor cron --install.");
 
   s = content("How it works", "One card", "One card, from brief to merge");
   const cardSteps = [
@@ -221,13 +221,13 @@ function gradientSvg(w, h) {
 
   // ---------- 3. Lanes ----------
   pres.addSection({ title: "Lanes" });
-  s = content("Lanes", "Lane lifecycle · AgentAutoKit", "A lane’s life in five steps");
+  s = content("Lanes", "Lane lifecycle", "A lane’s life in five steps");
   const life = [
-    ["FaGaugeHigh", "1. Gate", "kit-load measures the machine before a lane opens."],
-    ["FaUserShield", "2. Run in role", "Safe context only; hard denies against role escape."],
-    ["FaBell", "3. Report back", "Hooks log events; a watcher tells the leader."],
-    ["FaRecycle", "4. Reuse", "An idle lane takes the next brief; pool of 3."],
-    ["FaBroom", "5. Clean up", "Heavy build folders go first; worktrees only when safe."],
+    ["FaGaugeHigh", "1. Gate", "Machine too full? The lane does not open."],
+    ["FaUserShield", "2. Run in role", "Safe context only; it cannot act as the leader."],
+    ["FaBell", "3. Report back", "A watcher tells the leader within a minute."],
+    ["FaRecycle", "4. Reuse", "An idle lane takes the next brief."],
+    ["FaBroom", "5. Clean up", "Heavy build folders first; worktrees only when safe."],
   ];
   s.addShape(pres.shapes.LINE, { x: 1.3, y: 3.15, w: 10.5, h: 0, line: { color: C.accent6, width: 2 }, objectName: "timeline" });
   for (let i = 0; i < 5; i++) {
@@ -236,89 +236,11 @@ function gradientSvg(w, h) {
     s.addText(life[i][1], { x: cx, y: 3.95, w: 2.2, h: 0.45, fontSize: 18, bold: true, color: C.text1, margin: 0, valign: "top", isTextBox: true, objectName: `life title ${i + 1}` });
     s.addText(life[i][2], { x: cx, y: 4.45, w: 2.1, h: 1.1, fontSize: 14, color: C.text2, margin: 0, valign: "top", isTextBox: true, objectName: `life text ${i + 1}` });
   }
-  card(s, 0.7, 5.8, 11.9, 0.85, "adopt card");
-  await iconCircle(s, 0.9, 5.92, 0.6, "FaLink", "adopt");
-  twoLine(s, 1.75, 5.8, 10.6, 0.85, "Lanes from your own scripts: kit-tmux lanes adopt", "Registers a running tmux lane in the leader’s book so the watcher sees it. Leader only; checks name, socket and that the session is real.", 15, 12, "adopt text");
-  s.addNotes("The five steps every lane goes through; the next slides take them one by one. The bottom box is for projects that open lanes with their own launcher: adopt writes the running lane into the leader's book the same way lane-launch does and starts the watcher. It refuses calls from a lane, unknown sessions and odd names.");
-
-  s = content("Lanes", "1 · Load gate · AgentAutoKit", "Measure the machine before opening a lane", true);
-  tbl(s, rowsOf([
-    ["kit-load measures", "Why it matters"],
-    ["Free RAM %", "Every lane is a Claude Code session plus its tools"],
-    ["Swap", "STOP only when free RAM < 30% or memory pressure is high"],
-    ["Load per core", "Builds and tests in several lanes at once"],
-    ["Free disk", "Under 40 GB the leader is told to sweep worktrees"],
-    ["Booted simulators", "One iOS simulator at a time, shut down after use"],
-    ["Idle Colima", "A Docker VM with no container still holds RAM"],
-  ], (j) => ({ bold: j === 0, color: C.text1, fill: { color: C.background1 } })),
-  { x: 0.7, y: 2.4, w: 7.6, colW: [2.5, 5.1], fontSize: 14, rowH: 0.52, margin: [0.05, 0.15, 0.05, 0.15], objectName: "load table" });
-  card(s, 8.8, 2.4, 3.8, 3.64, "gate callout");
-  await iconCircle(s, 9.2, 2.75, 0.9, "FaTrafficLight", "gate");
-  s.addText([{ text: "OK · WARN · STOP", options: { fontSize: 18, bold: true, color: C.text1, breakLine: true } }, { text: "Exit 0, 1 or 2. STOP refuses lane-launch, lane-resume and --bare; opening the leader only warns. Override: --force-load, always logged.", options: { fontSize: 14, color: C.text2 } }],
-    { x: 9.2, y: 3.8, w: 3.0, h: 2.1, margin: 0, valign: "top", isTextBox: true, objectName: "gate text" });
-  note(s, "The same probe feeds lead-patrol. A load-hint hook adds context before lanes reuse and session resume; it never blocks.", 6.4, 0.4, 12);
-  s.addNotes("kit-load is one probe used in three places: the lane launcher gate, the leader's patrol and a hint hook. It returns 0, 1 or 2 for OK, WARN, STOP, with --json for scripts. Swap alone does not stop lanes; swap stops them only when free RAM is under 30 percent or macOS reports memory pressure. --force-load exists for the owner and always writes a log line.");
-
-  s = content("Lanes", "2 · Report back · AgentAutoKit", "Lanes report to the leader by themselves");
-  const flow = [
-    ["Lane hooks", "Stop · SessionEnd · idle", ""],
-    ["lane-events.jsonl", "DONE IDLE WAITING EXIT LIMIT", ""],
-    ["Watcher", "about every 60 s, one per leader", "guard"],
-    ["Leader", "inbox + lead-nudge hook", "lead"],
-  ];
-  for (let i = 0; i < 4; i++) {
-    const x = 0.7 + i * 3.1, y = 2.4, w = 2.6, h = 1.0, k = flow[i][2];
-    s.addShape(pres.shapes.RECTANGLE, { x, y, w, h, fill: { color: k === "lead" ? C.text1 : C.background1 }, line: { color: k === "guard" ? C.accent2 : k === "lead" ? C.text1 : C.accent6, width: k === "guard" ? 2 : 1 }, shadow: shadow(), objectName: `flow box ${i + 1}` });
-    twoLine(s, x + 0.2, y, w - 0.4, h, flow[i][0], flow[i][1], 16, 12, `flow label ${i + 1}`, k === "lead");
-    if (i < 3) s.addShape(pres.shapes.LINE, { x: x + w + 0.05, y: y + h / 2, w: 0.4, h: 0, line: { color: C.text2, width: 1.5, endArrowType: "triangle" }, objectName: `flow arrow ${i + 1}` });
-  }
-  card(s, 0.7, 3.85, 5.85, 2.35, "flags card");
-  s.addText([
-    { text: "What the watcher flags", options: { fontSize: 18, bold: true, color: C.text1, breakLine: true } },
-    { text: "A new READY PR line", options: { fontSize: 14, color: C.text2, bullet: true, breakLine: true } },
-    { text: "IDLE for more than 10 minutes", options: { fontSize: 14, color: C.text2, bullet: true, breakLine: true } },
-    { text: "Stuck, or WAITING on a prompt", options: { fontSize: 14, color: C.text2, bullet: true, breakLine: true } },
-    { text: "DEAD or orphan; usage limit or auth", options: { fontSize: 14, color: C.text2, bullet: true } },
-  ], { x: 1.0, y: 4.0, w: 5.3, h: 2.05, margin: 0, valign: "top", paraSpaceAfter: 3, isTextBox: true, objectName: "flags text" });
-  card(s, 6.75, 3.85, 5.85, 2.35, "escalation card", true);
-  s.addText([
-    { text: "Escalation", options: { fontSize: 18, bold: true, color: C.background1, breakLine: true } },
-    { text: "Stuck, DEAD or WAITING for 15 min and still unhandled 15 min after the alert: an alert message, a line in owner-alerts.log, and patrol shows the job until it is resolved.", options: { fontSize: 14, color: C.accent6 } },
-  ], { x: 7.05, y: 4.0, w: 5.3, h: 2.05, margin: 0, valign: "top", isTextBox: true, objectName: "escalation text" });
-  note(s, "Messages are marked unverified, never the owner’s words. An idle leader gets at most one typed line every 5 minutes.", 6.4, 0.4, 12);
-  s.addNotes("The lane's own Stop, SessionEnd and idle hooks write one structured line per event: lane, account, project, type and the PR and sha from the READY line, never free text. A watcher per leader, locked with flock, reads it about every minute and delivers to an inbox that the lead-nudge hook reads. The watcher starts with lane-launch or lanes reuse and stops when the leader has no lanes. The 15-minute patrol stays as a safety net.");
-
-  s = content("Lanes", "3 · Reuse and clean up · AgentAutoKit", "Reuse lanes; clean up only what is safe", true);
-  const reuse = [
-    ["FaRecycle", "kit-tmux lanes reuse <lane> <brief>", "Same repo and account. Enter only when the input holds exactly /clear; waits for idle, then types the brief."],
-    ["FaLayerGroup", "Lane pool", "Before a new lane, the kit looks for an idle one with no open PR. Cap lane_pool, default 3; --new skips the pool."],
-    ["FaBroom", "kit-wt-clean --self --light", "Before READY the lane drops heavy build folders. Never tracked files, never outside its own worktree."],
-    ["FaHardDrive", "Leader sweeps when disk is low", "--sweep only under the 40 GB line. Only clean, pushed, unlocked worktrees no process uses; closed PRs stay."],
-  ];
-  for (let i = 0; i < 4; i++) {
-    const x = 0.7 + (i % 2) * 6.05, y = 2.4 + Math.floor(i / 2) * 1.95, w = 5.85, h = 1.75;
-    card(s, x, y, w, h, `reuse card ${i + 1}`);
-    await iconCircle(s, x + 0.25, y + 0.3, 0.8, reuse[i][0], `reuse ${i + 1}`);
-    twoLine(s, x + 1.3, y, w - 1.5, h, reuse[i][1], reuse[i][2], 17, 13, `reuse text ${i + 1}`);
-  }
-  note(s, "Any error while checking keeps the worktree. Orphan lanes are flagged and the close command is printed, never run.", 6.4, 0.4, 12);
-  s.addNotes("Opening a fresh session and loading plugins costs time, so an idle lane takes the next brief. reuse re-checks the lane's state before typing, presses Enter only when the prompt holds exactly /clear, waits until the lane is idle again and checks for open prompts at every step. Pool size comes from lane_pool in machine.json. Cleanup is split: the lane cleans its own heavy build folders before READY; the leader sweeps all worktrees only when free disk drops under the kit-load warn line. Every safety check fails toward keeping the worktree.");
+  note(s, "Thresholds, events, the lane pool and adopt for your own launcher scripts: see the handout.", 6.1, 0.4, 13);
+  s.addNotes("Five steps every lane goes through. Gate: kit-load checks free RAM, swap, load, disk, booted simulators and idle Colima; STOP refuses a new lane, --force-load overrides and is always logged. Role: a lane runs with KIT_ROLE=lane, loads only the safe core and the app's rules, and hard denies stop merges, pushes to main and any way of acting as the leader. Report back: the lane's Stop, SessionEnd and idle hooks write one event line; a watcher per leader reads it about every minute and escalates if nobody handles it. Reuse: an idle lane gets /clear and the next brief; new lanes look in a pool of three first. Clean up: the lane drops heavy build folders before READY; the leader sweeps worktrees only when disk is low, and any doubt keeps the worktree.");
 
   // ---------- 4. Guardrails ----------
   pres.addSection({ title: "Guardrails" });
-  s = content("Guardrails", "Roles in kit-context · AgentAutoKit", "Lane and leader load different context");
-  tbl(s, rowsOf([
-    ["", "Lane · KIT_ROLE=lane", "Leader"],
-    ["Loads", "Safe core + the app’s rules; lead_only files left out", "Everything (also the default when no role is set)"],
-    ["Safety floor", "Files named safety, secret, security, tenant or permission always load", "Same"],
-    ["Hard denies", "Merge, push to main, force, tag, deploy, edit settings, hooks or manifest", "—"],
-    ["Anti-escape", "No git remote/config edits, no tmux or new lanes, no gh api writes, no credential reads", "—"],
-    ["Lead-only commands", "Refused: the guard walks the process tree and fails closed", "Allowed"],
-  ], (j) => ({ bold: j === 0, color: j === 0 ? C.accent1 : C.text1, fill: { color: C.background1 } })),
-  { x: 0.7, y: 2.4, w: 11.9, colW: [2.4, 6.2, 3.3], fontSize: 14, rowH: 0.64, margin: [0.05, 0.15, 0.05, 0.15], objectName: "roles context table" });
-  note(s, "Manifest .claude/context-roles.json (lead_only, safety, lane_deny). A broken manifest stops the lane from opening. Denies are a second net; the real lock is hooks plus branch protection.", 6.3, 0.6, 12);
-  s.addNotes("KIT_ROLE splits what each session loads. With no role set the session is treated as a leader and loads everything, which is the safe default. A lane loads the safe core and the app's rules; files the manifest marks lead_only are left out, which saves context on every lane turn. Any file whose name says safety, secret, security, tenant or permission always loads. The anti-escape denies close the ways a lane could act as a leader; lead-only commands check the real process tree, not just environment variables.");
-
   s = content("Guardrails", "Hooks", "Guardrails live in hooks, not in promises", true);
   tbl(s, rowsOf([
     ["Hook", "Does", "Threshold"],
@@ -370,7 +292,7 @@ function gradientSvg(w, h) {
 
   // ---------- 6. Shipping ----------
   pres.addSection({ title: "Shipping" });
-  s = content("Shipping", "Gated merge into epic branches · AgentAutoKit", "The leader merges into epic branches, behind a gate");
+  s = content("Shipping", "Epic merge", "The leader merges into epic branches, behind a gate");
   const merge = [
     ["FaCodeBranch", "Base is epic/<slug>-<issue>", "Never the integration or a release branch."],
     ["FaUserCheck", "The right PR", "Not a draft, not from a fork, the project’s author."],
@@ -387,7 +309,7 @@ function gradientSvg(w, h) {
   }
   s.addNotes("Merges into the integration branch always wait for the owner. Inside an epic, slices merge into the epic branch without waiting, but only if every condition here holds on the exact head being merged. Anything that deploys still needs the owner. The switch is read from CLAUDE.md on the integration branch right after a fetch, and changing that line must be its own PR merged by the owner.");
 
-  s = content("Shipping", "Spec by prototype · AgentAutoKit", "Spec by prototype, before any code", true);
+  s = content("Shipping", "Spec by prototype", "Spec by prototype, before any code", true);
   const screens = [
     ["FaBookOpen", "Guide", "Demo script + UAT"],
     ["FaMobileScreen", "App", "Phone frame, tabs"],
